@@ -62,6 +62,12 @@ public sealed class SpaHostingOptions
     public Func<string?>? ActiveAssetDirectoryProvider { get; init; }
 
     /// <summary>
+    /// Optional service worker configuration for offline support.
+    /// When set, the SPA host can register a service worker with the specified options.
+    /// </summary>
+    public ServiceWorkerOptions? ServiceWorker { get; init; }
+
+    /// <summary>
     /// Builds the base URL for this scheme. Example: "app://localhost".
     /// </summary>
     internal string BaseUrl => $"{Scheme}://{Host}";

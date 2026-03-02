@@ -1,0 +1,257 @@
+using Xunit;
+
+namespace Agibuild.Fulora.UnitTests;
+
+public class BridgeEventCollectorTests
+{
+    [Fact]
+    public void New_collector_is_empty()
+    {
+        var collector = new BridgeEventCollector(10);
+        Assert.Equal(0, collector.Count);
+        Assert.Equal(0, collector.DroppedCount);
+        Assert.Equal(10, collector.Capacity);
+        Assert.Empty(collector.GetEvents());
+    }
+
+    [Fact]
+    public void Add_increments_count_and_assigns_sequential_ids()
+    {
+        var collector = new BridgeEventCollector(10);
+        collector.Add(MakeEvent("Svc", "A"));
+        collector.Add(MakeEvent("Svc", "B"));
+
+        Assert.Equal(2, collector.Count);
+        var events = collector.GetEvents();
+        Assert.Equal(0, events[0].Id);
+        Assert.Equal(1, events[1].Id);
+    }
+
+    [Fact]
+    public void Overflow_drops_oldest_and_increments_dropped_count()
+    {
+        var collector = new BridgeEventCollector(3);
+        for (var i = 0; i < 5; i++)
+            collector.Add(MakeEvent("S", $"M{i}"));
+
+        Assert.Equal(3, collector.Count);
+        Assert.Equal(2, collector.DroppedCount);
+
+        var events = collector.GetEvents();
+        Assert.Equal("M2", events[0].MethodName);
+        Assert.Equal("M3", events[1].MethodName);
+        Assert.Equal("M4", events[2].MethodName);
+    }
+
+    [Fact]
+    public void Clear_resets_buffer_and_dropped_count()
+    {
+        var collector = new BridgeEventCollector(3);
+        for (var i = 0; i < 5; i++)
+            collector.Add(MakeEvent("S", $"M{i}"));
+
+        collector.Clear();
+        Assert.Equal(0, collector.Count);
+        Assert.Equal(0, collector.DroppedCount);
+        Assert.Empty(collector.GetEvents());
+    }
+
+    [Fact]
+    public void Subscribe_receives_events()
+    {
+        var collector = new BridgeEventCollector(10);
+        var received = new List<BridgeDevToolsEvent>();
+        using var sub = collector.Subscribe(e => received.Add(e));
+
+        collector.Add(MakeEvent("Svc", "Method"));
+        Assert.Single(received);
+        Assert.Equal("Svc", received[0].ServiceName);
+    }
+
+    [Fact]
+    public void Dispose_subscription_stops_callbacks()
+    {
+        var collector = new BridgeEventCollector(10);
+        var received = new List<BridgeDevToolsEvent>();
+        var sub = collector.Subscribe(e => received.Add(e));
+        sub.Dispose();
+
+        collector.Add(MakeEvent("Svc", "Method"));
+        Assert.Empty(received);
+    }
+
+    [Fact]
+    public void Subscriber_exception_does_not_break_collector()
+    {
+        var collector = new BridgeEventCollector(10);
+        using var sub = collector.Subscribe(_ => throw new InvalidOperationException("boom"));
+
+        collector.Add(MakeEvent("Svc", "Method"));
+        Assert.Equal(1, collector.Count);
+    }
+
+    [Fact]
+    public void Capacity_must_be_at_least_one()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new BridgeEventCollector(0));
+    }
+
+    private static BridgeDevToolsEvent MakeEvent(string service, string method) => new()
+    {
+        Timestamp = DateTimeOffset.UtcNow,
+        Direction = BridgeCallDirection.Export,
+        Phase = BridgeCallPhase.Start,
+        ServiceName = service,
+        MethodName = method,
+    };
+}
+
+public class DevToolsPanelTracerTests
+{
+    [Fact]
+    public void Export_call_lifecycle_produces_start_and_end_events()
+    {
+        var collector = new BridgeEventCollector(100);
+        var tracer = new DevToolsPanelTracer(collector);
+
+        tracer.OnExportCallStart("AppService", "getUser", """{"id":1}""");
+        tracer.OnExportCallEnd("AppService", "getUser", 42, "UserProfile");
+
+        var events = collector.GetEvents();
+        Assert.Equal(2, events.Count);
+
+        Assert.Equal(BridgeCallDirection.Export, events[0].Direction);
+        Assert.Equal(BridgeCallPhase.Start, events[0].Phase);
+        Assert.Equal("""{"id":1}""", events[0].ParamsJson);
+
+        Assert.Equal(BridgeCallPhase.End, events[1].Phase);
+        Assert.Equal(42, events[1].ElapsedMs);
+        Assert.Equal("UserProfile", events[1].ResultJson);
+    }
+
+    [Fact]
+    public void Export_call_error_produces_error_event()
+    {
+        var collector = new BridgeEventCollector(100);
+        var tracer = new DevToolsPanelTracer(collector);
+
+        tracer.OnExportCallError("AppService", "fail", 10, new Exception("test error"));
+
+        var evt = Assert.Single(collector.GetEvents());
+        Assert.Equal(BridgeCallPhase.Error, evt.Phase);
+        Assert.Equal("test error", evt.ErrorMessage);
+    }
+
+    [Fact]
+    public void Import_call_lifecycle_produces_events()
+    {
+        var collector = new BridgeEventCollector(100);
+        var tracer = new DevToolsPanelTracer(collector);
+
+        tracer.OnImportCallStart("UiCtrl", "showNotif", null);
+        tracer.OnImportCallEnd("UiCtrl", "showNotif", 5);
+
+        var events = collector.GetEvents();
+        Assert.Equal(2, events.Count);
+        Assert.Equal(BridgeCallDirection.Import, events[0].Direction);
+    }
+
+    [Fact]
+    public void Service_lifecycle_events_are_captured()
+    {
+        var collector = new BridgeEventCollector(100);
+        var tracer = new DevToolsPanelTracer(collector);
+
+        tracer.OnServiceExposed("AppService", 5, true);
+        tracer.OnServiceRemoved("AppService");
+
+        var events = collector.GetEvents();
+        Assert.Equal(2, events.Count);
+        Assert.Equal(BridgeCallDirection.Lifecycle, events[0].Direction);
+        Assert.Equal(BridgeCallPhase.ServiceExposed, events[0].Phase);
+        Assert.Equal(BridgeCallPhase.ServiceRemoved, events[1].Phase);
+    }
+
+    [Fact]
+    public void Inner_tracer_receives_all_calls()
+    {
+        var collector = new BridgeEventCollector(100);
+        var inner = new RecordingTracer();
+        var tracer = new DevToolsPanelTracer(collector, inner);
+
+        tracer.OnExportCallStart("S", "M", "{}");
+        tracer.OnExportCallEnd("S", "M", 1, "void");
+        tracer.OnExportCallError("S", "M", 2, new Exception("e"));
+        tracer.OnImportCallStart("S", "M", null);
+        tracer.OnImportCallEnd("S", "M", 3);
+        tracer.OnServiceExposed("S", 1, false);
+        tracer.OnServiceRemoved("S");
+
+        Assert.Equal(7, inner.Calls.Count);
+    }
+
+    [Fact]
+    public void NullBridgeTracer_inner_is_skipped()
+    {
+        var collector = new BridgeEventCollector(100);
+        var tracer = new DevToolsPanelTracer(collector, NullBridgeTracer.Instance);
+
+        tracer.OnExportCallStart("S", "M", "{}");
+        Assert.Equal(1, collector.Count);
+    }
+
+    [Fact]
+    public void Large_payload_is_truncated()
+    {
+        var collector = new BridgeEventCollector(100);
+        var tracer = new DevToolsPanelTracer(collector);
+
+        var largeJson = new string('x', 5000);
+        tracer.OnExportCallStart("S", "M", largeJson);
+
+        var evt = Assert.Single(collector.GetEvents());
+        Assert.True(evt.Truncated);
+        Assert.True(evt.ParamsJson!.Length < 5000);
+    }
+
+    private sealed class RecordingTracer : IBridgeTracer
+    {
+        public List<string> Calls { get; } = [];
+        public void OnExportCallStart(string s, string m, string? p) => Calls.Add($"ExportStart:{s}.{m}");
+        public void OnExportCallEnd(string s, string m, long e, string? r) => Calls.Add($"ExportEnd:{s}.{m}");
+        public void OnExportCallError(string s, string m, long e, Exception ex) => Calls.Add($"ExportError:{s}.{m}");
+        public void OnImportCallStart(string s, string m, string? p) => Calls.Add($"ImportStart:{s}.{m}");
+        public void OnImportCallEnd(string s, string m, long e) => Calls.Add($"ImportEnd:{s}.{m}");
+        public void OnServiceExposed(string s, int c, bool g) => Calls.Add($"Exposed:{s}");
+        public void OnServiceRemoved(string s) => Calls.Add($"Removed:{s}");
+    }
+}
+
+public class BridgeDevToolsServiceTests
+{
+    [Fact]
+    public void GetOverlayHtml_returns_non_empty_html()
+    {
+        var html = BridgeDevToolsService.GetOverlayHtml();
+        Assert.NotNull(html);
+        Assert.Contains("Bridge DevTools", html);
+        Assert.Contains("__bridgeDevToolsAddEvent", html);
+    }
+
+    [Fact]
+    public void Tracer_feeds_collector()
+    {
+        using var svc = new BridgeDevToolsService();
+        svc.Tracer.OnExportCallStart("Svc", "Method", "{}");
+
+        Assert.Equal(1, svc.Collector.Count);
+    }
+
+    [Fact]
+    public void Dispose_is_idempotent()
+    {
+        var svc = new BridgeDevToolsService();
+        svc.Dispose();
+        svc.Dispose();
+    }
+}

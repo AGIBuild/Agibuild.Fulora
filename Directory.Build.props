@@ -3,6 +3,14 @@
     <!-- Suppress experimental-API diagnostics for placeholder types defined in this solution. -->
     <NoWarn>$(NoWarn);AGWV001;AGWV002;AGWV003;AGWV004;AGWV005</NoWarn>
 
+    <!--
+      Allow building iOS targets when the installed Xcode is a compatible
+      patch newer than what the current .NET iOS workload was built against
+      (e.g. Xcode 26.3 vs workload expecting 26.2).
+      Remove once `dotnet workload update` ships a matching SDK.
+    -->
+    <ValidateXcodeVersion>false</ValidateXcodeVersion>
+
     <!-- Generate XML documentation for API reference -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 

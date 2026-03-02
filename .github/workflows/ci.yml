@@ -133,6 +133,13 @@ jobs:
       - name: Run CI (Compile + Coverage + Pack)
         run: ./build.sh --target Ci --configuration Release
 
+      - name: Validate NativeAOT publish
+        run: |
+          dotnet publish tests/Agibuild.Fulora.Integration.NugetPackageTests/Agibuild.Fulora.Integration.NugetPackageTests.csproj \
+            -p:PublishAot=true \
+            -r linux-x64 \
+            -p:AgibuildPackageVersion='*'
+
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()

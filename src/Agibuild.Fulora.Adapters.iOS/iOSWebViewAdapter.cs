@@ -1220,6 +1220,7 @@ internal sealed class iOSWebViewAdapter : IWebViewAdapter, INativeWebViewHandleP
         return tcs.Task;
     }
 
+    [MonoPInvokeCallback(typeof(NativeMethods.FindCb))]
     private static void OnFindComplete(IntPtr context, int activeMatchIndex, int totalMatches)
     {
         var handle = GCHandle.FromIntPtr(context);

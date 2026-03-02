@@ -62,7 +62,7 @@ partial class BuildTask
             }
             else
             {
-                // 3. Start emulator in background
+                // 3. Start emulator — UseShellExecute=true so the GUI window appears in foreground on macOS
                 Serilog.Log.Information("Starting Android emulator: {Avd}...", avdName);
                 var emulatorProcess = new Process
                 {
@@ -70,9 +70,7 @@ partial class BuildTask
                     {
                         FileName = emulatorPath,
                         Arguments = $"-avd {avdName} -no-snapshot-load -no-audio",
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
+                        UseShellExecute = true,
                     }
                 };
                 emulatorProcess.Start();

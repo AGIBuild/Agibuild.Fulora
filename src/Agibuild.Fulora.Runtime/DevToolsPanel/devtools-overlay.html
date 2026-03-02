@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bridge DevTools</title>
+<style>
+  :root {
+    --bg: #1e1e2e; --surface: #282840; --border: #3a3a5c;
+    --text: #cdd6f4; --subtext: #a6adc8; --green: #a6e3a1;
+    --red: #f38ba8; --blue: #89b4fa; --yellow: #f9e2af;
+    --peach: #fab387; --font: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: var(--font); font-size: 12px; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  header h1 { font-size: 13px; font-weight: 600; }
+  header .stats { color: var(--subtext); font-size: 11px; }
+  header .actions { display: flex; gap: 6px; }
+  header button { background: var(--border); color: var(--text); border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; font-family: var(--font); }
+  header button:hover { background: var(--blue); color: var(--bg); }
+  .filter-bar { display: flex; gap: 6px; padding: 4px 12px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .filter-bar input { flex: 1; background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 3px 8px; border-radius: 4px; font-family: var(--font); font-size: 11px; }
+  .filter-bar select { background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 3px 6px; border-radius: 4px; font-family: var(--font); font-size: 11px; }
+  #log-container { flex: 1; overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { position: sticky; top: 0; background: var(--surface); padding: 4px 8px; text-align: left; font-weight: 600; font-size: 11px; color: var(--subtext); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; }
+  tbody tr:hover { background: rgba(137,180,250,0.08); }
+  tbody tr.error { background: rgba(243,139,168,0.1); }
+  tbody tr.error:hover { background: rgba(243,139,168,0.18); }
+  td { padding: 3px 8px; white-space: nowrap; vertical-align: top; }
+  .dir-badge { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 10px; font-weight: 600; }
+  .dir-export { background: rgba(166,227,161,0.2); color: var(--green); }
+  .dir-import { background: rgba(137,180,250,0.2); color: var(--blue); }
+  .dir-lifecycle { background: rgba(249,226,175,0.2); color: var(--yellow); }
+  .phase-start { color: var(--subtext); }
+  .phase-end { color: var(--green); }
+  .phase-error { color: var(--red); font-weight: 600; }
+  .latency { color: var(--peach); }
+  .expand-row { display: none; }
+  .expand-row.visible { display: table-row; }
+  .expand-cell { padding: 6px 16px; background: rgba(0,0,0,0.2); }
+  .expand-cell pre { white-space: pre-wrap; word-break: break-all; color: var(--subtext); font-size: 11px; max-height: 200px; overflow-y: auto; }
+  .empty-state { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--subtext); font-size: 14px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Bridge DevTools</h1>
+  <span class="stats" id="stats">0 events</span>
+  <div class="actions">
+    <button id="btn-clear" title="Clear all events">Clear</button>
+    <button id="btn-scroll" title="Auto-scroll to latest">Auto ↓</button>
+  </div>
+</header>
+<div class="filter-bar">
+  <input type="text" id="filter-text" placeholder="Filter by service or method…">
+  <select id="filter-dir">
+    <option value="">All Directions</option>
+    <option value="Export">JS→C#</option>
+    <option value="Import">C#→JS</option>
+    <option value="Lifecycle">Lifecycle</option>
+  </select>
+  <select id="filter-phase">
+    <option value="">All Phases</option>
+    <option value="Start">Start</option>
+    <option value="End">End</option>
+    <option value="Error">Error</option>
+  </select>
+</div>
+<div id="log-container">
+  <table>
+    <thead>
+      <tr>
+        <th style="width:40px">#</th>
+        <th style="width:80px">Time</th>
+        <th style="width:70px">Dir</th>
+        <th style="width:60px">Phase</th>
+        <th>Service.Method</th>
+        <th style="width:60px">Latency</th>
+      </tr>
+    </thead>
+    <tbody id="log-body"></tbody>
+  </table>
+  <div class="empty-state" id="empty-state">Waiting for bridge events…</div>
+</div>
+<script>
+(function() {
+  var events = [];
+  var autoScroll = true;
+  var body = document.getElementById('log-body');
+  var stats = document.getElementById('stats');
+  var emptyState = document.getElementById('empty-state');
+  var container = document.getElementById('log-container');
+  var filterText = document.getElementById('filter-text');
+  var filterDir = document.getElementById('filter-dir');
+  var filterPhase = document.getElementById('filter-phase');
+
+  document.getElementById('btn-clear').onclick = function() {
+    events = [];
+    body.innerHTML = '';
+    emptyState.style.display = 'flex';
+    stats.textContent = '0 events';
+    if (window.agWebView && window.agWebView.rpc) {
+      window.agWebView.rpc.invoke('BridgeDevTools.clearEvents', {});
+    }
+  };
+
+  document.getElementById('btn-scroll').onclick = function() {
+    autoScroll = !autoScroll;
+    this.style.background = autoScroll ? 'var(--blue)' : 'var(--border)';
+    this.style.color = autoScroll ? 'var(--bg)' : 'var(--text)';
+  };
+
+  filterText.oninput = filterDir.onchange = filterPhase.onchange = applyFilter;
+
+  function applyFilter() {
+    var text = filterText.value.toLowerCase();
+    var dir = filterDir.value;
+    var phase = filterPhase.value;
+    var rows = body.querySelectorAll('tr[data-idx]');
+    rows.forEach(function(row) {
+      var evt = events[parseInt(row.dataset.idx)];
+      if (!evt) return;
+      var match = true;
+      if (text && !(evt.ServiceName + '.' + evt.MethodName).toLowerCase().includes(text)) match = false;
+      if (dir && evt.Direction !== dir) match = false;
+      if (phase && evt.Phase !== phase) match = false;
+      row.style.display = match ? '' : 'none';
+      var expandRow = row.nextElementSibling;
+      if (expandRow && expandRow.classList.contains('expand-row')) {
+        expandRow.style.display = match && expandRow.classList.contains('visible') ? '' : 'none';
+      }
+    });
+  }
+
+  function dirBadge(d) {
+    var cls = d === 'Export' ? 'dir-export' : d === 'Import' ? 'dir-import' : 'dir-lifecycle';
+    var label = d === 'Export' ? 'JS→C#' : d === 'Import' ? 'C#→JS' : '⚙';
+    return '<span class="dir-badge ' + cls + '">' + label + '</span>';
+  }
+
+  function phaseClass(p) {
+    return p === 'Error' ? 'phase-error' : p === 'End' ? 'phase-end' : 'phase-start';
+  }
+
+  function formatTime(ts) {
+    var d = new Date(ts);
+    return d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      + '.' + String(d.getMilliseconds()).padStart(3, '0');
+  }
+
+  function esc(s) {
+    if (!s) return '';
+    var d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+  }
+
+  function addEvent(evt) {
+    var idx = events.length;
+    events.push(evt);
+    emptyState.style.display = 'none';
+
+    var isError = evt.Phase === 'Error';
+    var tr = document.createElement('tr');
+    tr.dataset.idx = idx;
+    if (isError) tr.classList.add('error');
+    tr.innerHTML =
+      '<td>' + evt.Id + '</td>' +
+      '<td>' + formatTime(evt.Timestamp) + '</td>' +
+      '<td>' + dirBadge(evt.Direction) + '</td>' +
+      '<td class="' + phaseClass(evt.Phase) + '">' + evt.Phase + '</td>' +
+      '<td>' + esc(evt.ServiceName) + '.' + esc(evt.MethodName) + '</td>' +
+      '<td class="latency">' + (evt.ElapsedMs != null ? evt.ElapsedMs + 'ms' : '') + '</td>';
+
+    var expandTr = document.createElement('tr');
+    expandTr.classList.add('expand-row');
+    var expandTd = document.createElement('td');
+    expandTd.colSpan = 6;
+    expandTd.classList.add('expand-cell');
+    var detail = '';
+    if (evt.ParamsJson) detail += '<b>Params:</b>\n<pre>' + esc(evt.ParamsJson) + '</pre>\n';
+    if (evt.ResultJson) detail += '<b>Result:</b>\n<pre>' + esc(evt.ResultJson) + '</pre>\n';
+    if (evt.ErrorMessage) detail += '<b>Error:</b>\n<pre style="color:var(--red)">' + esc(evt.ErrorMessage) + '</pre>\n';
+    if (evt.Truncated) detail += '<i style="color:var(--yellow)">Payload was truncated</i>';
+    if (!detail) detail = '<i>No payload</i>';
+    expandTd.innerHTML = detail;
+    expandTr.appendChild(expandTd);
+
+    tr.onclick = function() {
+      expandTr.classList.toggle('visible');
+      expandTr.style.display = expandTr.classList.contains('visible') ? '' : 'none';
+    };
+
+    body.appendChild(tr);
+    body.appendChild(expandTr);
+
+    stats.textContent = events.length + ' events';
+    if (autoScroll) container.scrollTop = container.scrollHeight;
+  }
+
+  // Bridge integration: receive events via RPC push from host
+  window.__bridgeDevToolsAddEvent = addEvent;
+
+  // Also support batch load of initial events
+  window.__bridgeDevToolsLoadEvents = function(evts) {
+    evts.forEach(addEvent);
+  };
+})();
+</script>
+</body>
+</html>

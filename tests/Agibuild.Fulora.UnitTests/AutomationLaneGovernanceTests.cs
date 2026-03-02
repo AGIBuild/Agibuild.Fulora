@@ -862,10 +862,10 @@ public sealed class AutomationLaneGovernanceTests
         var reactPackage = File.ReadAllText(Path.Combine(repoRoot, "samples", "avalonia-react", "AvaloniReact.Web", "package.json"));
         var reactBridge = File.ReadAllText(Path.Combine(repoRoot, "samples", "avalonia-react", "AvaloniReact.Web", "src", "bridge", "services.ts"));
         var reactBridgeHook = File.ReadAllText(Path.Combine(repoRoot, "samples", "avalonia-react", "AvaloniReact.Web", "src", "hooks", "useBridge.ts"));
-        var vueEntry = File.ReadAllText(Path.Combine(repoRoot, "samples", "avalonia-vue", "AvaloniVue.Web", "src", "main.ts"));
         var vuePackage = File.ReadAllText(Path.Combine(repoRoot, "samples", "avalonia-vue", "AvaloniVue.Web", "package.json"));
         var vueBridge = File.ReadAllText(Path.Combine(repoRoot, "samples", "avalonia-vue", "AvaloniVue.Web", "src", "bridge", "services.ts"));
         var vueTsConfig = File.ReadAllText(Path.Combine(repoRoot, "samples", "avalonia-vue", "AvaloniVue.Web", "tsconfig.json"));
+        var vueLayout = File.ReadAllText(Path.Combine(repoRoot, "samples", "avalonia-vue", "AvaloniVue.Web", "src", "components", "AppLayout.vue"));
 
         AssertSourceContains(bridgePackage, "\"@agibuild/bridge\"", BridgeDxAssets, "packages/bridge/package.json");
         AssertSourceContains(bridgePackage, "\"prepare\": \"npm run build\"", BridgeDxAssets, "packages/bridge/package.json");
@@ -875,7 +875,7 @@ public sealed class AutomationLaneGovernanceTests
         AssertSourceContains(reactPackage, "\"@agibuild/bridge\"", BridgeDxAssets, "samples/avalonia-react/.../package.json");
         AssertSourceContains(reactBridge, "bridgeClient.getService", BridgeDxAssets, "samples/avalonia-react/.../services.ts");
         AssertSourceContains(reactBridgeHook, "bridgeClient.ready", BridgeDxAssets, "samples/avalonia-react/.../useBridge.ts");
-        AssertSourceContains(vueEntry, "getAppInfo", BridgeDxAssets, "samples/avalonia-vue/.../main.ts");
+        AssertSourceContains(vueLayout, "getAppInfo", BridgeDxAssets, "samples/avalonia-vue/.../AppLayout.vue");
         AssertSourceContains(vuePackage, "\"@agibuild/bridge\"", BridgeDxAssets, "samples/avalonia-vue/.../package.json");
         AssertSourceContains(vueBridge, "bridgeClient.getService", BridgeDxAssets, "samples/avalonia-vue/.../services.ts");
         AssertSourceContains(vueTsConfig, "bridge.d.ts", BridgeDxAssets, "samples/avalonia-vue/.../tsconfig.json");

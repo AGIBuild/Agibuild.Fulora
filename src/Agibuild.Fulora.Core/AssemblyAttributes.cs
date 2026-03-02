@@ -1,0 +1,1 @@
+[assembly: Agibuild.Fulora.AotCompatibility]

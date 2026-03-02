@@ -1,0 +1,215 @@
+using Xunit;
+
+namespace Agibuild.Fulora.UnitTests;
+
+public class TelemetryTests
+{
+    [Fact]
+    public void NullTelemetryProvider_does_not_throw()
+    {
+        var provider = NullTelemetryProvider.Instance;
+        provider.TrackEvent("test");
+        provider.TrackEvent("test", new Dictionary<string, string> { ["k"] = "v" });
+        provider.TrackMetric("latency", 42.5);
+        provider.TrackMetric("latency", 42.5, new Dictionary<string, string> { ["dim"] = "x" });
+        provider.TrackException(new InvalidOperationException("test"));
+        provider.TrackException(new InvalidOperationException("test"), new Dictionary<string, string> { ["k"] = "v" });
+        provider.Flush();
+    }
+
+    [Fact]
+    public void NullTelemetryProvider_Instance_is_singleton()
+    {
+        var a = NullTelemetryProvider.Instance;
+        var b = NullTelemetryProvider.Instance;
+        Assert.Same(a, b);
+    }
+
+    [Fact]
+    public void BridgeTelemetryTracer_tracks_metrics_on_export_call_end()
+    {
+        var events = new List<(string Name, double Value, IDictionary<string, string>? Dims)>();
+        var provider = new RecordingTelemetryProvider(
+            onMetric: (n, v, d) => events.Add((n, v, d)));
+
+        var tracer = new BridgeTelemetryTracer(provider);
+        tracer.OnExportCallEnd("AppService", "getUser", 42, "UserProfile");
+
+        var metric = Assert.Single(events);
+        Assert.Contains("export.latency_ms", metric.Name);
+        Assert.Equal(42, metric.Value);
+        Assert.NotNull(metric.Dims);
+        Assert.Equal("AppService", metric.Dims["service"]);
+        Assert.Equal("getUser", metric.Dims["method"]);
+    }
+
+    [Fact]
+    public void BridgeTelemetryTracer_tracks_exception_on_export_call_error()
+    {
+        var metrics = new List<(string Name, double Value, IDictionary<string, string>? Dims)>();
+        var evts = new List<(string Name, IDictionary<string, string>? Props)>();
+        var exceptions = new List<(Exception Ex, IDictionary<string, string>? Props)>();
+        var provider = new RecordingTelemetryProvider(
+            onMetric: (n, v, d) => metrics.Add((n, v, d)),
+            onEvent: (n, p) => evts.Add((n, p)),
+            onException: (e, p) => exceptions.Add((e, p)));
+
+        var tracer = new BridgeTelemetryTracer(provider);
+        var ex = new InvalidOperationException("bridge error");
+        tracer.OnExportCallError("Calc", "divide", 10, ex);
+
+        var metric = Assert.Single(metrics);
+        Assert.Equal(10, metric.Value);
+
+        var evt = Assert.Single(evts);
+        Assert.Contains("export.error", evt.Name);
+        Assert.Equal("bridge error", evt.Props?["error"]);
+
+        var captured = Assert.Single(exceptions);
+        Assert.Same(ex, captured.Ex);
+    }
+
+    [Fact]
+    public void CompositeTelemetryProvider_dispatches_to_all_inner_providers()
+    {
+        var metrics1 = new List<(string Name, double Value, IDictionary<string, string>? Dims)>();
+        var metrics2 = new List<(string Name, double Value, IDictionary<string, string>? Dims)>();
+        var p1 = new RecordingTelemetryProvider(onMetric: (n, v, d) => metrics1.Add((n, v, d)));
+        var p2 = new RecordingTelemetryProvider(onMetric: (n, v, d) => metrics2.Add((n, v, d)));
+
+        var composite = new CompositeTelemetryProvider(p1, p2);
+        composite.TrackMetric("latency", 99.5, new Dictionary<string, string> { ["dim"] = "x" });
+
+        var m1 = Assert.Single(metrics1);
+        Assert.Equal("latency", m1.Name);
+        Assert.Equal(99.5, m1.Value);
+        Assert.Equal("x", m1.Dims?["dim"]);
+
+        var m2 = Assert.Single(metrics2);
+        Assert.Equal("latency", m2.Name);
+        Assert.Equal(99.5, m2.Value);
+    }
+
+    [Fact]
+    public void CompositeTelemetryProvider_exception_in_one_provider_does_not_affect_others()
+    {
+        var received = new List<string>();
+        var good = new RecordingTelemetryProvider(onEvent: (n, _) => received.Add(n));
+        var bad = new ThrowingTelemetryProvider();
+        var composite = new CompositeTelemetryProvider(good, bad);
+
+        composite.TrackEvent("test"); // should not throw; good provider receives it
+
+        Assert.Single(received);
+        Assert.Equal("test", received[0]);
+    }
+
+    [Fact]
+    public void CompositeTelemetryProvider_with_empty_array_does_not_throw()
+    {
+        var composite = new CompositeTelemetryProvider();
+        composite.TrackEvent("e");
+        composite.TrackMetric("m", 1.0);
+        composite.TrackException(new Exception("x"));
+        composite.Flush();
+    }
+
+    [Fact]
+    public void ConsoleTelemetryProvider_does_not_throw()
+    {
+        var provider = new ConsoleTelemetryProvider();
+        provider.TrackEvent("test");
+        provider.TrackEvent("test", new Dictionary<string, string> { ["k"] = "v" });
+        provider.TrackMetric("latency", 42.5);
+        provider.TrackMetric("latency", 42.5, new Dictionary<string, string> { ["dim"] = "x" });
+        provider.TrackException(new InvalidOperationException("test"));
+        provider.TrackException(new InvalidOperationException("test"), new Dictionary<string, string> { ["k"] = "v" });
+        provider.Flush();
+    }
+
+    [Fact]
+    public void BridgeTelemetryTracer_tracks_import_call_metrics()
+    {
+        var metrics = new List<(string Name, double Value, IDictionary<string, string>? Dims)>();
+        var provider = new RecordingTelemetryProvider(onMetric: (n, v, d) => metrics.Add((n, v, d)));
+
+        var tracer = new BridgeTelemetryTracer(provider);
+        tracer.OnImportCallEnd("JsService", "invoke", 15);
+
+        var metric = Assert.Single(metrics);
+        Assert.Contains("import.latency_ms", metric.Name);
+        Assert.Equal(15, metric.Value);
+        Assert.NotNull(metric.Dims);
+        Assert.Equal("JsService", metric.Dims["service"]);
+        Assert.Equal("invoke", metric.Dims["method"]);
+    }
+
+    [Fact]
+    public void BridgeTelemetryTracer_inner_tracer_receives_all_calls()
+    {
+        var inner = new RecordingTracer();
+        var provider = NullTelemetryProvider.Instance;
+        var tracer = new BridgeTelemetryTracer(provider, inner);
+
+        tracer.OnExportCallStart("S", "M", "{}");
+        tracer.OnExportCallEnd("S", "M", 1, "void");
+        tracer.OnExportCallError("S", "M", 2, new Exception("e"));
+        tracer.OnImportCallStart("S", "M", null);
+        tracer.OnImportCallEnd("S", "M", 3);
+        tracer.OnServiceExposed("S", 1, false);
+        tracer.OnServiceRemoved("S");
+
+        Assert.Equal(7, inner.Calls.Count);
+    }
+
+    private sealed class RecordingTelemetryProvider : ITelemetryProvider
+    {
+        private readonly Action<string, double, IDictionary<string, string>?>? _onMetric;
+        private readonly Action<string, IDictionary<string, string>?>? _onEvent;
+        private readonly Action<Exception, IDictionary<string, string>?>? _onException;
+
+        public RecordingTelemetryProvider(
+            Action<string, double, IDictionary<string, string>?>? onMetric = null,
+            Action<string, IDictionary<string, string>?>? onEvent = null,
+            Action<Exception, IDictionary<string, string>?>? onException = null)
+        {
+            _onMetric = onMetric;
+            _onEvent = onEvent;
+            _onException = onException;
+        }
+
+        public void TrackEvent(string name, IDictionary<string, string>? properties = null)
+            => _onEvent?.Invoke(name, properties ?? new Dictionary<string, string>());
+
+        public void TrackMetric(string name, double value, IDictionary<string, string>? dimensions = null)
+            => _onMetric?.Invoke(name, value, dimensions ?? new Dictionary<string, string>());
+
+        public void TrackException(Exception exception, IDictionary<string, string>? properties = null)
+            => _onException?.Invoke(exception, properties ?? new Dictionary<string, string>());
+
+        public void Flush() { }
+    }
+
+    private sealed class ThrowingTelemetryProvider : ITelemetryProvider
+    {
+        public void TrackEvent(string name, IDictionary<string, string>? properties = null)
+            => throw new InvalidOperationException("ThrowingTelemetryProvider");
+        public void TrackMetric(string name, double value, IDictionary<string, string>? dimensions = null)
+            => throw new InvalidOperationException("ThrowingTelemetryProvider");
+        public void TrackException(Exception exception, IDictionary<string, string>? properties = null)
+            => throw new InvalidOperationException("ThrowingTelemetryProvider");
+        public void Flush() => throw new InvalidOperationException("ThrowingTelemetryProvider");
+    }
+
+    private sealed class RecordingTracer : IBridgeTracer
+    {
+        public List<string> Calls { get; } = [];
+        public void OnExportCallStart(string s, string m, string? p) => Calls.Add($"ExportStart:{s}.{m}");
+        public void OnExportCallEnd(string s, string m, long e, string? r) => Calls.Add($"ExportEnd:{s}.{m}");
+        public void OnExportCallError(string s, string m, long e, Exception ex) => Calls.Add($"ExportError:{s}.{m}");
+        public void OnImportCallStart(string s, string m, string? p) => Calls.Add($"ImportStart:{s}.{m}");
+        public void OnImportCallEnd(string s, string m, long e) => Calls.Add($"ImportEnd:{s}.{m}");
+        public void OnServiceExposed(string s, int c, bool g) => Calls.Add($"Exposed:{s}");
+        public void OnServiceRemoved(string s) => Calls.Add($"Removed:{s}");
+    }
+}
