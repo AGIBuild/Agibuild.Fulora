@@ -674,7 +674,10 @@ public sealed class WebViewCore : IWebView, IWebViewAdapterHost, IDisposable
             // Auto-enable bridge with defaults if needed.
             if (!_webMessageBridgeEnabled)
             {
-                EnableWebMessageBridge(new WebMessageBridgeOptions());
+                EnableWebMessageBridge(new WebMessageBridgeOptions
+                {
+                    EnableDevToolsDiagnostics = _environmentOptions.EnableDevTools
+                });
             }
 
             _bridgeService = new RuntimeBridgeService(
@@ -909,7 +912,7 @@ public sealed class WebViewCore : IWebView, IWebViewAdapterHost, IDisposable
         _webMessageBridgeEnabled = true;
         _webMessagePolicy = new DefaultWebMessagePolicy(options.AllowedOrigins, options.ProtocolVersion, ChannelId);
         _webMessageDropDiagnosticsSink = options.DropDiagnosticsSink;
-        _rpcService ??= new WebViewRpcService(script => InvokeScriptAsync(script), _logger);
+        _rpcService ??= new WebViewRpcService(script => InvokeScriptAsync(script), _logger, options.EnableDevToolsDiagnostics);
 
         // Inject RPC JS stub.
         ObserveBackgroundTask(InvokeScriptAsync(WebViewRpcService.JsStub), $"{nameof(EnableWebMessageBridge)}.{nameof(WebViewRpcService.JsStub)}");

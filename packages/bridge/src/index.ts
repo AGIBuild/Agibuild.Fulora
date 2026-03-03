@@ -14,6 +14,12 @@ export {
   withErrorNormalization,
 } from "./middleware.js";
 
+export { enableHmrPreservation } from "./hmr.js";
+export type { BridgeState } from "./hmr.js";
+
+export { WorkerBridgeClient, createBridgeRelay } from "./worker.js";
+export type { WorkerBridgeMessage, BridgeWithGetService } from "./worker.js";
+
 import {
   type BridgeMiddleware,
   createContext,

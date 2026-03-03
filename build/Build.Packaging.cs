@@ -60,6 +60,12 @@ partial class BuildTask
                 TestingProject,
                 CliProject,
                 PluginLocalStorageProject,
+                PluginHttpClientProject,
+                PluginDatabaseProject,
+                PluginAuthTokenProject,
+                PluginFileSystemProject,
+                PluginNotificationsProject,
+                OpenTelemetryProject,
             };
 
             foreach (var project in subPackageProjects)

@@ -16,7 +16,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "node --experimental-strip-types --no-warnings --test src/middleware.test.ts && node --experimental-strip-types --no-warnings --test src/integration.test.ts",
+    "test": "node --experimental-strip-types --no-warnings --test src/middleware.test.ts && node --experimental-strip-types --no-warnings --test src/integration.test.ts && node --experimental-strip-types --no-warnings --test src/hmr.test.ts && node --experimental-strip-types --no-warnings --test src/worker.test.ts",
     "prepare": "npm run build"
   },
   "repository": {

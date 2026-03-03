@@ -7,8 +7,9 @@ internal static class AddCommand
 {
     public static Command Create()
     {
-        var group = new Command("add") { Description = "Add scaffolding to the project" };
+        var group = new Command("add") { Description = "Add scaffolding or packages to the project" };
         group.Subcommands.Add(CreateServiceSubcommand());
+        group.Subcommands.Add(AddPluginCommand.Create());
         return group;
     }
 

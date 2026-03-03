@@ -30,11 +30,13 @@ internal sealed class WebViewRpcService : IWebViewRpcService
     private readonly ConcurrentDictionary<string, ActiveEnumerator> _activeEnumerators = new();
     private readonly Func<string, Task<string?>> _invokeScript;
     private readonly ILogger _logger;
+    private readonly bool _enableDevToolsDiagnostics;
 
-    internal WebViewRpcService(Func<string, Task<string?>> invokeScript, ILogger logger)
+    internal WebViewRpcService(Func<string, Task<string?>> invokeScript, ILogger logger, bool enableDevToolsDiagnostics = false)
     {
         _invokeScript = invokeScript;
         _logger = logger;
+        _enableDevToolsDiagnostics = enableDevToolsDiagnostics;
     }
 
     // ==================== Handler registration ====================
@@ -371,7 +373,9 @@ internal sealed class WebViewRpcService : IWebViewRpcService
 
             if (!_handlers.TryGetValue(method, out var handler))
             {
-                return BuildErrorResponseJson(id, -32601, $"Method not found: {method}");
+                var (serviceName, methodName) = SplitRpcMethod(method);
+                var diagnostic = BridgeErrorDiagnostic.MethodNotFound(serviceName, methodName);
+                return BuildErrorResponseJson(id, diagnostic);
             }
 
             var handlerResult = await handler(paramsProp);
@@ -380,17 +384,30 @@ internal sealed class WebViewRpcService : IWebViewRpcService
         catch (OperationCanceledException)
         {
             _logger.LogDebug("RPC: handler for '{Method}' was cancelled", method);
-            return BuildErrorResponseJson(id, -32800, "Request cancelled");
+            var (serviceName, methodName) = SplitRpcMethod(method);
+            return BuildErrorResponseJson(id, BridgeErrorDiagnostic.Cancellation(serviceName, methodName));
         }
         catch (WebViewRpcException rpcEx)
         {
             _logger.LogDebug(rpcEx, "RPC: handler for '{Method}' threw RPC error {Code}", method, rpcEx.Code);
+            if (rpcEx.Code == -32029)
+            {
+                var (serviceName, methodName) = SplitRpcMethod(method);
+                return BuildErrorResponseJson(id, new BridgeErrorDiagnostic(BridgeErrorCode.RateLimitExceeded, rpcEx.Message, null));
+            }
             return BuildErrorResponseJson(id, rpcEx.Code, rpcEx.Message);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogDebug(ex, "RPC: handler for '{Method}' failed to deserialize", method);
+            var (serviceName, methodName) = SplitRpcMethod(method);
+            return BuildErrorResponseJson(id, BridgeErrorDiagnostic.SerializationError(serviceName, methodName, ex.Message));
         }
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "RPC: handler for '{Method}' threw", method);
-            return BuildErrorResponseJson(id, -32603, ex.Message);
+            var (serviceName, methodName) = SplitRpcMethod(method);
+            return BuildErrorResponseJson(id, BridgeErrorDiagnostic.InvocationError(serviceName, methodName, ex.Message));
         }
     }
 
@@ -414,6 +431,26 @@ internal sealed class WebViewRpcService : IWebViewRpcService
             Error = new RpcError { Code = code, Message = message }
         };
         return JsonSerializer.Serialize(response, RpcJsonContext.Default.RpcErrorResponse);
+    }
+
+    private string BuildErrorResponseJson(string? id, BridgeErrorDiagnostic diagnostic)
+    {
+        var jsonRpcCode = BridgeErrorDiagnostic.ToJsonRpcCode(diagnostic.Code);
+        var data = _enableDevToolsDiagnostics && diagnostic.Hint is not null
+            ? new RpcErrorData { DiagnosticCode = (int)diagnostic.Code, Hint = diagnostic.Hint }
+            : new RpcErrorData { DiagnosticCode = (int)diagnostic.Code };
+        var response = new RpcErrorResponse
+        {
+            Id = id,
+            Error = new RpcError { Code = jsonRpcCode, Message = diagnostic.Message, Data = data }
+        };
+        return JsonSerializer.Serialize(response, RpcJsonContext.Default.RpcErrorResponse);
+    }
+
+    private static (string serviceName, string methodName) SplitRpcMethod(string rpcMethod)
+    {
+        var dot = rpcMethod.LastIndexOf('.');
+        return dot >= 0 ? (rpcMethod[..dot], rpcMethod[(dot + 1)..]) : (rpcMethod, "");
     }
 
     private async Task SendResponseAsync(string json)
@@ -753,6 +790,20 @@ internal sealed class WebViewRpcService : IWebViewRpcService
 
         [JsonPropertyName("message")]
         public string Message { get; set; } = "";
+
+        [JsonPropertyName("data")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public RpcErrorData? Data { get; set; }
+    }
+
+    internal sealed class RpcErrorData
+    {
+        [JsonPropertyName("diagnosticCode")]
+        public int DiagnosticCode { get; set; }
+
+        [JsonPropertyName("hint")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Hint { get; set; }
     }
 
     internal sealed class RpcErrorResponse
@@ -795,6 +846,7 @@ internal sealed class WebViewRpcService : IWebViewRpcService
 [JsonSerializable(typeof(WebViewRpcService.RpcResponse))]
 [JsonSerializable(typeof(WebViewRpcService.RpcErrorResponse))]
 [JsonSerializable(typeof(WebViewRpcService.RpcError))]
+[JsonSerializable(typeof(WebViewRpcService.RpcErrorData))]
 [JsonSerializable(typeof(string))]
 internal partial class RpcJsonContext : JsonSerializerContext
 {

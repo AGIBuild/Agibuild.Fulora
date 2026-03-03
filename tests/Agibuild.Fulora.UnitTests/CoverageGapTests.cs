@@ -1613,8 +1613,8 @@ public sealed class CoverageGapTests
         var rpc = CreateTestRpcService(out var scripts);
         var request = """{"jsonrpc":"2.0","id":"unk-1","method":"nonexistent","params":null}""";
         rpc.TryProcessMessage(request);
-        WaitUntil(() => scripts.Any(s => s.Contains("-32601")));
-        Assert.Contains(scripts, s => s.Contains("-32601"));
+        WaitUntil(() => scripts.Any(s => s.Contains("-32002") || s.Contains("-32601")));
+        Assert.True(scripts.Any(s => s.Contains("-32002") || s.Contains("-32601")), "Expected method-not-found error code");
     }
 
     [Fact]

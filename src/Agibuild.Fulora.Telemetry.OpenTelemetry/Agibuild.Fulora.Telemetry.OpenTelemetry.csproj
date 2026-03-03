@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Agibuild.Fulora.Telemetry</RootNamespace>
+    <IsPackable>true</IsPackable>
+    <PackageId>Agibuild.Fulora.Telemetry.OpenTelemetry</PackageId>
+    <Description>OpenTelemetry integration for Agibuild.Fulora — bridge call tracing and metrics export.</Description>
+    <PackageTags>fulora;opentelemetry;telemetry;tracing;metrics</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Agibuild.Fulora.Core\Agibuild.Fulora.Core.csproj" />
+    <ProjectReference Include="..\Agibuild.Fulora.DependencyInjection\Agibuild.Fulora.DependencyInjection.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="OpenTelemetry.Api" Version="1.12.0" />
+  </ItemGroup>
+</Project>

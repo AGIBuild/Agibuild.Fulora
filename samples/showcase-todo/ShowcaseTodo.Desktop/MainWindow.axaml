@@ -1,0 +1,9 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv="clr-namespace:Agibuild.Fulora;assembly=Agibuild.Fulora"
+        x:Class="ShowcaseTodo.Desktop.MainWindow"
+        Title="Showcase Todo" Width="800" Height="600">
+
+    <wv:WebView x:Name="WebView" />
+
+</Window>

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Agibuild.Fulora.Plugin.Notifications</RootNamespace>
+
+    <IsPackable>true</IsPackable>
+    <PackageId>Agibuild.Fulora.Plugin.Notifications</PackageId>
+    <Description>Notifications bridge plugin for Agibuild Fulora — show native/system notifications from JavaScript.</Description>
+    <PackageTags>fulora;bridge;plugin;fulora-plugin;notifications</PackageTags>
+    <Authors>AGIBuild</Authors>
+    <License>MIT</License>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Agibuild.Fulora.Core\Agibuild.Fulora.Core.csproj" />
+    <ProjectReference Include="..\..\src\Agibuild.Fulora.Bridge.Generator\Agibuild.Fulora.Bridge.Generator.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
+  </ItemGroup>
+</Project>

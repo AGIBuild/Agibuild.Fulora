@@ -157,6 +157,24 @@ partial class BuildTask : NukeBuild
     AbsolutePath PluginLocalStorageProject =>
         RootDirectory / "plugins" / "Agibuild.Fulora.Plugin.LocalStorage" / "Agibuild.Fulora.Plugin.LocalStorage.csproj";
 
+    AbsolutePath PluginAuthTokenProject =>
+        RootDirectory / "plugins" / "Agibuild.Fulora.Plugin.AuthToken" / "Agibuild.Fulora.Plugin.AuthToken.csproj";
+
+    AbsolutePath PluginHttpClientProject =>
+        RootDirectory / "plugins" / "Agibuild.Fulora.Plugin.HttpClient" / "Agibuild.Fulora.Plugin.HttpClient.csproj";
+
+    AbsolutePath PluginDatabaseProject =>
+        RootDirectory / "plugins" / "Agibuild.Fulora.Plugin.Database" / "Agibuild.Fulora.Plugin.Database.csproj";
+
+    AbsolutePath PluginFileSystemProject =>
+        RootDirectory / "plugins" / "Agibuild.Fulora.Plugin.FileSystem" / "Agibuild.Fulora.Plugin.FileSystem.csproj";
+
+    AbsolutePath PluginNotificationsProject =>
+        RootDirectory / "plugins" / "Agibuild.Fulora.Plugin.Notifications" / "Agibuild.Fulora.Plugin.Notifications.csproj";
+
+    AbsolutePath OpenTelemetryProject =>
+        SrcDirectory / "Agibuild.Fulora.Telemetry.OpenTelemetry" / "Agibuild.Fulora.Telemetry.OpenTelemetry.csproj";
+
     AbsolutePath TemplatePackProject =>
         RootDirectory / "templates" / "Agibuild.Fulora.Templates.csproj";
 

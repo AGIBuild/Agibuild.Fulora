@@ -1,0 +1,70 @@
+{
+  "name": "agibuild-fulora",
+  "displayName": "Fulora Bridge Inspector",
+  "description": "Inspect Agibuild.Fulora bridge calls in real-time via the Bridge Debug Server.",
+  "version": "0.1.0",
+  "publisher": "agibuild",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AGIBuild/Agibuild.Fulora.git",
+    "directory": "tools/vscode-extension"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Debuggers",
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:fulora.bridgeInspector"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "fulora",
+          "title": "Fulora",
+          "icon": "$(debug-console)"
+        }
+      ]
+    },
+    "views": {
+      "fulora": [
+        {
+          "id": "fulora.bridgeInspector",
+          "name": "Bridge Inspector",
+          "type": "webview"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "fulora.connect",
+        "title": "Connect",
+        "icon": "$(debug-connect)"
+      },
+      {
+        "command": "fulora.disconnect",
+        "title": "Disconnect",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "fulora.clear",
+        "title": "Clear",
+        "icon": "$(clear-all)"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p .",
+    "watch": "tsc -watch -p ."
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.9.0"
+  }
+}

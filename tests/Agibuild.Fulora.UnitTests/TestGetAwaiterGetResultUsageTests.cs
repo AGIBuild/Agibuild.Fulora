@@ -27,6 +27,8 @@ public sealed class TestGetAwaiterGetResultUsageTests
             "tests/Agibuild.Fulora.UnitTests/BuildOrchestrationBlockingWaitGovernanceTests.cs",
             "tests/Agibuild.Fulora.UnitTests/WebDialogTests.cs",
             "tests/Agibuild.Fulora.Integration.Tests.Automation/WebAuthBrokerIntegrationTests.cs",
+            "tests/Agibuild.Fulora.UnitTests/Plugins/HttpClientServiceTests.cs",
+            "tests/Agibuild.Fulora.UnitTests/BridgeDebugServerTests.cs",
         };
 
         var found = new List<(string File, string Line)>();

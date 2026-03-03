@@ -609,97 +609,174 @@ dotnet new agibuild-hybrid -n MyApp --frontend react
 
 ---
 
-## Phase 10: Production Operations & Ecosystem Maturity (🚧 Active)
+## Phase 10: Production Operations & Ecosystem Maturity (✅ Completed)
 
 **Goal**: Bridge the gap between "framework GA" and "enterprise production deployment" by adding operational infrastructure (auto-update, DI integration for post-1.0 services, OpenTelemetry provider) and platform maturity (NativeAOT validation, GTK hardening).
-
-**Why now**: Phase 9 delivered 1.0 GA with comprehensive runtime capabilities (config, telemetry, message bus, theme sync, global shortcuts, tray/menu). Phase 10 focuses on the operational and deployment concerns that enterprise teams evaluate before committing to production: automated updates, structured observability export, AOT readiness, and full DI ergonomics.
 
 ### Milestones
 
 | Milestone | Focus | Outcome | Status |
 |---|---|---|---|
-| **M10.1 Auto-Update Framework** | `IAutoUpdateService` with check/download/apply lifecycle | Policy-governed, platform-aware application update pipeline | 🚧 Active |
-| **M10.2 DI Integration for Post-1.0 Services** | Register config, telemetry, message bus, auto-update in DI | One-liner service registration for all framework capabilities | Pending |
-| **M10.3 OpenTelemetry Provider Package** | `Agibuild.Fulora.Telemetry.OpenTelemetry` NuGet package | Bridge call spans and metrics export to OTLP-compatible backends | Pending |
-| **M10.4 NativeAOT CI Validation** | Publish + run validation for AOT-compiled sample | Trimming-safe guarantee with CI enforcement | Pending |
-| **M10.5 GTK/Linux Production Readiness** | DevTools integration, smoke suite, CI lane | Linux platform promoted from preview to production-ready | Pending |
+| **M10.1 Auto-Update Framework** | `IAutoUpdateService` with check/download/apply lifecycle | Policy-governed, platform-aware application update pipeline | ✅ Done |
+| **M10.2 DI Integration for Post-1.0 Services** | Register config, telemetry, message bus, auto-update in DI | One-liner service registration via `AddFulora()` builder | ✅ Done |
+| **M10.3 Telemetry & Crash Reporting** | `ITelemetryProvider` + `CompositeTelemetryProvider` + bridge metrics | Built-in telemetry with console + composite providers | ✅ Done |
+| **M10.4 NativeAOT CI Validation** | Publish + run validation for AOT-compiled sample | Trimming-safe guarantee with CI enforcement | ✅ Done |
+| **M10.5 GTK/Linux Adapter** | GTK adapter with WebKitGTK native bindings | Linux platform available via adapter module | ✅ Done |
 
-### Deliverables
+### Additional Deliverables (beyond original scope)
+
+| Deliverable | Status |
+|---|---|
+| CLI tool (`fulora new/dev/generate/add`) | ✅ Done |
+| Bridge DevTools panel (in-WebView overlay) | ✅ Done |
+| Bridge JS middleware pipeline | ✅ Done |
+| Bridge plugin convention + LocalStorage reference plugin | ✅ Done |
+| Global shortcut service | ✅ Done |
+| Theme sync bridge | ✅ Done |
+| Tray/menu activation | ✅ Done |
+| Remote config + feature flags | ✅ Done |
+| MAUI host adapter | ✅ Done |
+| Cross-WebView message bus | ✅ Done |
+| Offline service worker integration | ✅ Done |
+| Documentation site deployment | ✅ Done |
+| Ecosystem samples (Angular, Svelte) | ✅ Done |
+| Template DX upgrade | ✅ Done |
+| Stable NuGet + npm package publication | ✅ Done |
+
+### OpenSpec Archive Evidence
+
+- `2026-03-02-nativeaot-validation`, `2026-03-02-maui-integration`, `2026-03-02-telemetry-crash-reporting`
+- `2026-03-02-offline-service-worker`, `2026-03-02-cross-webview-bridge`, `2026-03-02-agibuild-cli-tool`
+- `2026-03-02-bridge-devtools-panel`, `2026-03-02-bridge-js-middleware`, `2026-03-02-bridge-plugin-packages`
+- `2026-03-02-global-shortcut-service`, `2026-03-02-theme-sync-service`, `2026-03-02-shell-tray-menu-activation`
+- `2026-03-02-remote-config-feature-flags`, `2026-03-02-docs-site-deploy`, `2026-03-02-ecosystem-samples`
+- `2026-03-02-template-dx-upgrade`, `2026-03-02-publish-stable-packages`
+
+---
+
+## Phase 11: Ecosystem & Developer Experience (🚧 Active)
+
+**Goal**: Transform Fulora from "feature-complete framework" to "thriving ecosystem" by establishing plugin discoverability, a rich official plugin suite, IDE-level developer tooling, and advanced runtime capabilities.
+
+**Why now**: Phase 10 delivered comprehensive runtime capabilities and production operational infrastructure. The framework is feature-rich but the ecosystem layer (plugin discovery, official plugins, IDE integration, developer profiling tools) is the bottleneck for adoption. This phase focuses on two strategic pillars: **Ecosystem Maturity (A)** and **Developer Experience (B)**.
+
+### Milestones
+
+| Milestone | Focus | Outcome | Status |
+|---|---|---|---|
+| **M11.1 Plugin Registry & Discovery** | NuGet tag convention, `fulora search/add/list` CLI | Discoverable plugin ecosystem via existing registries | 🚧 Active |
+| **M11.2 OpenTelemetry Provider Package** | `Agibuild.Fulora.Telemetry.OpenTelemetry` standalone NuGet | Bridge call spans + metrics export to OTLP backends | Pending |
+| **M11.3 VS Code Bridge Extension** | `agibuild-fulora` VS Code extension + debug protocol | Live bridge call visualization in IDE sidebar | Pending |
+| **M11.4 Official Plugin: Database** | `Agibuild.Fulora.Plugin.Database` (SQLite) | Structured local data storage from JS via bridge | Pending |
+| **M11.5 Official Plugin: HTTP Client** | `Agibuild.Fulora.Plugin.HttpClient` | Host-routed HTTP with interceptors and auth injection | Pending |
+| **M11.6 Official Plugin: File System** | `Agibuild.Fulora.Plugin.FileSystem` | Sandboxed file system access from JS | Pending |
+| **M11.7 Official Plugin: Notifications** | `Agibuild.Fulora.Plugin.Notifications` | Cross-platform system notifications via bridge | Pending |
+| **M11.8 Official Plugin: Auth Token** | `Agibuild.Fulora.Plugin.AuthToken` | Platform-secure token storage (Keychain/CredMgr/Keystore) | Pending |
+| **M11.9 Bridge Call Profiler** | `BridgeCallProfiler` with statistical aggregation | Per-service/method latency percentiles and error rates | Pending |
+| **M11.10 Web Worker Bridge** | `WorkerBridgeClient` via MessagePort relay | Bridge calls from Web Workers with type safety | Pending |
+| **M11.11 Showcase Todo App** | Full-featured reference app using all plugins | Real-world complexity demonstration and reference architecture | Pending |
+| **M11.12 Interactive Playground** | Web-based bridge interface playground | Zero-setup experimentation for evaluators | Pending |
+| **M11.13 Enhanced Error Diagnostics** | Rich bridge error codes with actionable hints | Reduced debugging friction for bridge call failures | Pending |
+| **M11.14 HMR Bridge Preservation** | Bridge state preservation across hot reloads | Seamless dev loop without manual state re-trigger | Pending |
+| **M11.15 Release Automation Pipeline** | Tag-driven multi-package NuGet + npm publish | Sustainable delivery as plugin count grows | Pending |
+
+### Deliverables by Tier
+
+**Tier 1 — Foundation (parallel)**
 
 | # | Deliverable | Depends On | Est. Complexity |
 |---|---|---|---|
-| 10.1 | Auto-update service contracts + runtime implementation | Phase 9 (stable API) | High |
-| 10.2 | DI extension methods for config, telemetry, message bus, auto-update | 10.1 | Low |
-| 10.3 | OpenTelemetry provider package with bridge span instrumentation | Phase 9 telemetry contracts | Medium |
-| 10.4 | NativeAOT publish validation target + documentation | Phase 9 source generators | Medium |
-| 10.5 | GTK DevTools + Linux smoke suite + CI lane | Phase 0 GTK adapter | Medium |
+| 11.1 | Plugin registry discovery + CLI commands | CLI, plugin convention | Medium |
+| 11.2 | OpenTelemetry provider package | ITelemetryProvider, IBridgeTracer | Medium |
+| 11.3 | VS Code bridge extension + debug protocol | IBridgeTracer, WebSocket | High |
 
-### Phase 10 Exit Criteria
+**Tier 2 — Official Plugins + Profiler**
 
-- Auto-update lifecycle (check → download → verify → apply/restart) is testable via mock adapter.
-- All post-1.0 services are registerable via `services.AddFulora()` one-liner.
-- OpenTelemetry provider produces valid OTLP spans for bridge calls.
-- At least one sample publishes and runs with `PublishAot=true`.
-- GTK adapter passes smoke suite on Linux CI.
+| # | Deliverable | Depends On | Est. Complexity |
+|---|---|---|---|
+| 11.4 | Database plugin (SQLite) | Plugin convention | Medium |
+| 11.5 | HTTP Client plugin | Plugin convention | Medium |
+| 11.6 | File System plugin | Plugin convention, binary payload | Medium |
+| 11.9 | Bridge call profiler | IBridgeTracer | Medium |
 
----
+**Tier 3 — Advanced Capabilities**
 
-## Phase 11: Ecosystem Expansion & Cross-Framework (Planned)
+| # | Deliverable | Depends On | Est. Complexity |
+|---|---|---|---|
+| 11.7 | Notifications plugin | Plugin convention, platform adapters | High |
+| 11.8 | Auth Token plugin | Plugin convention, platform secure storage | High |
+| 11.10 | Web Worker bridge | @agibuild/bridge, source generator | High |
+| 11.11 | Showcase Todo app | All plugins (11.4-11.8) | Medium |
+| 11.12 | Interactive playground | Docs site, bridge TS generation | Medium |
 
-**Goal**: Expand the framework reach beyond Avalonia to .NET MAUI, establish a plugin ecosystem with discovery and registry, and provide IDE tooling for bridge development.
+**Tier 4 — Polish & Operations**
 
-### Milestones
-
-| Milestone | Focus | Outcome |
-|---|---|---|
-| **M11.1 MAUI Host Adapter** | `Agibuild.Fulora.Maui` package with full bridge + SPA hosting | Fulora available to MAUI developers on Android/iOS/Windows |
-| **M11.2 Plugin Registry & Discovery** | Central plugin catalog, `fulora search plugin`, version compatibility | Discoverable ecosystem with quality signals |
-| **M11.3 Official Plugin Suite** | Database, HTTP client, notifications, file system plugins | Rich out-of-box capability set |
-| **M11.4 IDE Extensions** | VS Code / Rider extension for bridge call visualization | Visual bridge debugging without DevTools overlay |
+| # | Deliverable | Depends On | Est. Complexity |
+|---|---|---|---|
+| 11.13 | Enhanced error diagnostics | RuntimeBridgeService | Low |
+| 11.14 | HMR bridge preservation | @agibuild/bridge | Medium |
+| 11.15 | Release automation pipeline | All packages | Medium |
 
 ### Phase 11 Exit Criteria
 
-- MAUI host adapter passes bridge + SPA hosting integration tests on at least 2 platforms.
-- `fulora search plugin` returns results from a published registry.
-- At least 3 official plugins published with NuGet + npm pairs.
+- `fulora search` returns results from NuGet.org for packages tagged `fulora-plugin`.
+- At least 5 official plugins published with NuGet + npm pairs (database, http, fs, notifications, auth).
+- VS Code extension visualizes live bridge calls from a running Fulora app.
+- OpenTelemetry provider produces valid OTLP spans and metrics for bridge calls.
+- Bridge call profiler provides per-method P50/P95/P99 latency statistics.
+- Web Worker bridge calls have same type safety as main-thread bridge calls.
+- Showcase app demonstrates real-world usage of all official plugins together.
+- Tag-driven release pipeline publishes all NuGet and npm packages automatically.
 
 ---
 
-## Phase 12: Advanced Runtime & Performance (Planned)
+## Phase 12: Enterprise & Advanced Scenarios (Planned)
 
-**Goal**: Deliver native-grade runtime capabilities including offline support, shared state management, and worker-based computation offload.
+**Goal**: Address enterprise deployment concerns and advanced runtime scenarios beyond the core framework and plugin ecosystem.
 
 ### Milestones
 
 | Milestone | Focus | Outcome |
 |---|---|---|
-| **M12.1 Offline Caching & Service Worker** | Complete SW lifecycle, fetch strategies, offline fallback | PWA-grade offline experience in hybrid apps |
+| **M12.1 Sentry Crash Reporting Package** | `Agibuild.Fulora.Telemetry.Sentry` NuGet package | One-line crash reporting with bridge breadcrumbs |
 | **M12.2 Shared State Management** | Cross-WebView reactive state with conflict resolution | Multi-window state consistency without manual sync |
-| **M12.3 Web Worker Bridge** | Bridge calls from Web Workers, computation offload | Heavy computation without blocking UI thread |
-| **M12.4 Sentry Crash Reporting Package** | `Agibuild.Fulora.Telemetry.Sentry` NuGet package | One-line crash reporting with bridge breadcrumbs |
+| **M12.3 Enterprise Auth Patterns** | SSO/OAuth integration guides + sample | Enterprise-ready authentication workflows |
+| **M12.4 IDE Extension: Rider** | Rider/IntelliJ plugin reusing debug protocol | Bridge visualization for Rider users |
+| **M12.5 Plugin Quality & Compatibility** | Plugin version compatibility matrix + quality signals | Reliable plugin selection for production apps |
 
 ### Phase 12 Exit Criteria
 
-- Service Worker registration and offline fallback are testable in contract tests.
+- Sentry provider captures bridge call breadcrumbs and crash reports.
 - Cross-WebView state synchronization has deterministic conflict resolution semantics.
-- Web Worker bridge calls have same type safety as main-thread bridge calls.
+- At least one enterprise auth pattern (OAuth PKCE) is documented with working sample.
 
 ---
 
 ## Dependencies & Prerequisites
 
 ```
-Phase 0-9 (✅ Done) ──► Phase 10 (🚧 Active) ──► Phase 11 (Planned) ──► Phase 12 (Planned)
-                              │                         │                      │
-                              ├── Auto-update            ├── MAUI adapter        ├── Offline/SW
-                              ├── DI integration         ├── Plugin registry     ├── Shared state
-                              ├── OpenTelemetry pkg      ├── Official plugins    ├── Worker bridge
-                              ├── NativeAOT validation   └── IDE extensions      └── Sentry pkg
-                              └── GTK production
+Phase 0-9 (✅ Done) ──► Phase 10 (✅ Done) ──► Phase 11 (🚧 Active) ──► Phase 12 (Planned)
+                                                      │
+                            ┌─────────────────────────┼─────────────────────────┐
+                            │                         │                         │
+                      Tier 1 (Foundation)       Tier 2 (Plugins)         Tier 3 (Advanced)
+                      ┌─────────────┐          ┌────────────────┐       ┌──────────────────┐
+                      │ Plugin Reg  │──────────▶│ Database       │       │ Notifications    │
+                      │ OTel Pkg    │          │ HTTP Client    │       │ Auth Token       │
+                      │ VS Code Ext │          │ File System    │───────▶│ Web Worker Bridge│
+                      └─────────────┘          │ Profiler       │       │ Showcase App     │
+                                               └────────────────┘       │ Playground       │
+                                                                        └──────────────────┘
+                                                                               │
+                                                                         Tier 4 (Polish)
+                                                                        ┌──────────────────┐
+                                                                        │ Error Diagnostics│
+                                                                        │ HMR Preservation │
+                                                                        │ Release Pipeline │
+                                                                        └──────────────────┘
 ```
 
-Phase 10 builds on the stable 1.0 API surface to add operational infrastructure. Phase 11 expands the ecosystem horizontally (MAUI, plugins, IDE). Phase 12 deepens runtime capabilities for advanced use cases.
+Phase 11 combines ecosystem maturity (plugin discovery + official plugins) with developer experience (IDE extension + profiler + playground) to drive adoption. Phase 12 addresses enterprise concerns and advanced scenarios.
 
 ---
 
@@ -718,7 +795,10 @@ Phase 10 builds on the stable 1.0 API surface to add operational infrastructure.
 | Auto-update signature verification | Malicious update injection | Require cryptographic signature verification before applying updates |
 | NativeAOT trimming removes bridge types | Runtime failures in AOT builds | Source generators are inherently trim-safe; validate with CI publish target |
 | OpenTelemetry SDK version coupling | Dependency conflicts with host apps | Use separate NuGet package with explicit version range |
-| MAUI host adapter platform divergence | Inconsistent behavior across MAUI targets | Reuse core runtime contracts; platform-specific code only in adapter layer |
+| Plugin ecosystem fragmentation | Incompatible plugin versions | NuGet tag convention + manifest with min Fulora version |
+| VS Code extension WebSocket security | Unauthorized access to bridge data | Localhost-only binding, opt-in debug server, no auth needed for local dev |
+| Platform secure storage inconsistency | Auth token plugin behavior varies | Per-platform adapter with explicit fallback semantics |
+| Web Worker relay latency | Performance overhead from main-thread proxy | Benchmark and document overhead; direct bypass not possible due to WebView constraints |
 
 ---
 

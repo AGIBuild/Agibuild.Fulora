@@ -20,6 +20,12 @@ public sealed class WebMessageBridgeOptions
     /// Optional sink for diagnostics when inbound messages are dropped by policy.
     /// </summary>
     public IWebMessageDropDiagnosticsSink? DropDiagnosticsSink { get; init; }
+
+    /// <summary>
+    /// When true, bridge error responses include actionable hints in the <c>data.hint</c> field.
+    /// Default is false to avoid information leakage in production.
+    /// </summary>
+    public bool EnableDevToolsDiagnostics { get; init; }
 }
 
 internal sealed class DefaultWebMessagePolicy : IWebMessagePolicy

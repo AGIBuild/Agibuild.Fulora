@@ -1,0 +1,30 @@
+using Agibuild.Fulora;
+
+namespace Agibuild.Fulora.Plugin.Database;
+
+/// <summary>
+/// Bridge plugin manifest for the Database service.
+/// Register with: <c>bridge.UsePlugin&lt;DatabasePlugin&gt;();</c>
+/// </summary>
+public sealed class DatabasePlugin : IBridgePlugin
+{
+    public static IEnumerable<BridgePluginServiceDescriptor> GetServices()
+    {
+        yield return BridgePluginServiceDescriptor.Create<IDatabaseService>(
+            sp =>
+            {
+                var options = sp?.GetService(typeof(DatabaseOptions)) as DatabaseOptions;
+                return new DatabaseService(options);
+            });
+    }
+
+    /// <summary>
+    /// Returns service descriptors with the given options.
+    /// Use when registering manually with custom <see cref="DatabaseOptions"/>.
+    /// </summary>
+    public static IEnumerable<BridgePluginServiceDescriptor> GetServices(DatabaseOptions options)
+    {
+        yield return BridgePluginServiceDescriptor.Create<IDatabaseService>(
+            _ => new DatabaseService(options));
+    }
+}

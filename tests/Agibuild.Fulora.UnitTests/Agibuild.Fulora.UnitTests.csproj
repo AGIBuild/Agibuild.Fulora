@@ -19,6 +19,12 @@
     <ProjectReference Include="..\Agibuild.Fulora.Testing\Agibuild.Fulora.Testing.csproj" />
     <ProjectReference Include="..\..\src\Agibuild.Fulora.Bridge.Generator\Agibuild.Fulora.Bridge.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
     <ProjectReference Include="..\..\plugins\Agibuild.Fulora.Plugin.LocalStorage\Agibuild.Fulora.Plugin.LocalStorage.csproj" />
+    <ProjectReference Include="..\..\plugins\Agibuild.Fulora.Plugin.HttpClient\Agibuild.Fulora.Plugin.HttpClient.csproj" />
+    <ProjectReference Include="..\..\plugins\Agibuild.Fulora.Plugin.Database\Agibuild.Fulora.Plugin.Database.csproj" />
+    <ProjectReference Include="..\..\plugins\Agibuild.Fulora.Plugin.FileSystem\Agibuild.Fulora.Plugin.FileSystem.csproj" />
+    <ProjectReference Include="..\..\plugins\Agibuild.Fulora.Plugin.Notifications\Agibuild.Fulora.Plugin.Notifications.csproj" />
+    <ProjectReference Include="..\..\plugins\Agibuild.Fulora.Plugin.AuthToken\Agibuild.Fulora.Plugin.AuthToken.csproj" />
+    <ProjectReference Include="..\..\src\Agibuild.Fulora.Cli\Agibuild.Fulora.Cli.csproj" />
   </ItemGroup>
 
   <ItemGroup>

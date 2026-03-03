@@ -1,0 +1,185 @@
+using Agibuild.Fulora.Testing;
+using Xunit;
+
+namespace Agibuild.Fulora.UnitTests;
+
+/// <summary>
+/// Unit tests for <see cref="BridgeErrorDiagnostic"/> factory methods and error code mapping.
+/// </summary>
+public sealed class BridgeErrorDiagnosticTests
+{
+    [Fact]
+    public void ServiceNotFound_produces_correct_code_message_and_hint()
+    {
+        var diagnostic = BridgeErrorDiagnostic.ServiceNotFound("AppService");
+
+        Assert.Equal(BridgeErrorCode.ServiceNotFound, diagnostic.Code);
+        Assert.Equal("Service 'AppService' is not registered.", diagnostic.Message);
+        Assert.NotNull(diagnostic.Hint);
+        Assert.Contains("bridge.Expose", diagnostic.Hint);
+        Assert.Contains("IAppService", diagnostic.Hint);
+        Assert.Contains("AppService", diagnostic.Hint);
+    }
+
+    [Fact]
+    public void MethodNotFound_produces_correct_code_message_and_hint()
+    {
+        var diagnostic = BridgeErrorDiagnostic.MethodNotFound("AppService", "getCurrentUser");
+
+        Assert.Equal(BridgeErrorCode.MethodNotFound, diagnostic.Code);
+        Assert.Equal("Method 'getCurrentUser' not found on service 'AppService'.", diagnostic.Message);
+        Assert.NotNull(diagnostic.Hint);
+        Assert.Contains("[JsExport]", diagnostic.Hint);
+        Assert.Contains("AppService", diagnostic.Hint);
+        Assert.Contains("getCurrentUser", diagnostic.Hint);
+    }
+
+    [Fact]
+    public void ParameterMismatch_produces_correct_code_message_and_hint()
+    {
+        var diagnostic = BridgeErrorDiagnostic.ParameterMismatch("AppService", "save", "Expected int, got string");
+
+        Assert.Equal(BridgeErrorCode.ParameterMismatch, diagnostic.Code);
+        Assert.Equal("Parameter mismatch calling 'AppService.save': Expected int, got string", diagnostic.Message);
+        Assert.NotNull(diagnostic.Hint);
+        Assert.Contains("TypeScript", diagnostic.Hint);
+        Assert.Contains("fulora generate", diagnostic.Hint);
+    }
+
+    [Fact]
+    public void SerializationError_produces_correct_code_message_and_hint()
+    {
+        var diagnostic = BridgeErrorDiagnostic.SerializationError("AppService", "upload", "Cannot deserialize type X");
+
+        Assert.Equal(BridgeErrorCode.SerializationError, diagnostic.Code);
+        Assert.Equal("Serialization error for 'AppService.upload': Cannot deserialize type X", diagnostic.Message);
+        Assert.NotNull(diagnostic.Hint);
+        Assert.Contains("JSON-serializable", diagnostic.Hint);
+        Assert.Contains("AppService", diagnostic.Hint);
+        Assert.Contains("upload", diagnostic.Hint);
+    }
+
+    [Fact]
+    public void InvocationError_produces_correct_code_message_and_null_hint()
+    {
+        var diagnostic = BridgeErrorDiagnostic.InvocationError("AppService", "process", "Boom!");
+
+        Assert.Equal(BridgeErrorCode.InvocationError, diagnostic.Code);
+        Assert.Equal("Error invoking 'AppService.process': Boom!", diagnostic.Message);
+        Assert.Null(diagnostic.Hint);
+    }
+
+    [Fact]
+    public void Timeout_produces_correct_code_message_and_hint()
+    {
+        var diagnostic = BridgeErrorDiagnostic.Timeout("AppService", "longOperation");
+
+        Assert.Equal(BridgeErrorCode.TimeoutError, diagnostic.Code);
+        Assert.Equal("Call to 'AppService.longOperation' timed out.", diagnostic.Message);
+        Assert.NotNull(diagnostic.Hint);
+        Assert.Contains("timeout", diagnostic.Hint);
+        Assert.Contains("AppService", diagnostic.Hint);
+        Assert.Contains("longOperation", diagnostic.Hint);
+    }
+
+    [Fact]
+    public void Cancellation_produces_correct_code_message_and_null_hint()
+    {
+        var diagnostic = BridgeErrorDiagnostic.Cancellation("AppService", "cancelMe");
+
+        Assert.Equal(BridgeErrorCode.CancellationError, diagnostic.Code);
+        Assert.Equal("Call to 'AppService.cancelMe' was cancelled.", diagnostic.Message);
+        Assert.Null(diagnostic.Hint);
+    }
+
+    [Theory]
+    [InlineData("AppService", "getCurrentUser")]
+    [InlineData("Api", "ping")]
+    [InlineData("CustomName", "doSomething")]
+    public void Hint_text_includes_service_and_method_names(string serviceName, string methodName)
+    {
+        var diagnostic = BridgeErrorDiagnostic.MethodNotFound(serviceName, methodName);
+
+        Assert.Contains(serviceName, diagnostic.Message);
+        Assert.Contains(methodName, diagnostic.Message);
+        Assert.NotNull(diagnostic.Hint);
+        Assert.Contains(serviceName, diagnostic.Hint);
+        Assert.Contains(methodName, diagnostic.Hint);
+    }
+
+    [Fact]
+    public void Hints_are_actionable_and_mention_specific_actions()
+    {
+        var serviceNotFound = BridgeErrorDiagnostic.ServiceNotFound("X");
+        Assert.Contains("Expose", serviceNotFound.Hint);
+        Assert.Contains("UsePlugin", serviceNotFound.Hint);
+
+        var methodNotFound = BridgeErrorDiagnostic.MethodNotFound("X", "y");
+        Assert.Contains("JsExport", methodNotFound.Hint);
+        Assert.Contains("re-exposed", methodNotFound.Hint);
+
+        var paramMismatch = BridgeErrorDiagnostic.ParameterMismatch("X", "y", "details");
+        Assert.Contains("TypeScript", paramMismatch.Hint);
+        Assert.Contains("fulora generate", paramMismatch.Hint);
+
+        var serialization = BridgeErrorDiagnostic.SerializationError("X", "y", "details");
+        Assert.Contains("JSON-serializable", serialization.Hint);
+        Assert.Contains("JsonSerializable", serialization.Hint);
+    }
+
+    [Fact]
+    public void Method_not_found_response_includes_diagnostic_when_EnableDevToolsDiagnostics_true()
+    {
+        var dispatcher = new TestDispatcher();
+        var adapter = MockWebViewAdapter.Create();
+        var core = new WebViewCore(adapter, dispatcher);
+        core.EnableWebMessageBridge(new WebMessageBridgeOptions
+        {
+            AllowedOrigins = new HashSet<string> { "*" },
+            EnableDevToolsDiagnostics = true
+        });
+        var scripts = new List<string>();
+        adapter.ScriptCallback = script => { scripts.Add(script); return null; };
+
+        adapter.RaiseWebMessage(
+            """{"jsonrpc":"2.0","id":"m-1","method":"NonExistentService.nonExistentMethod","params":{}}""",
+            "*", core.ChannelId);
+        dispatcher.RunAll();
+
+        var responseScript = scripts.FirstOrDefault(s => s.Contains("_onResponse") && s.Contains("error"));
+        Assert.NotNull(responseScript);
+        Assert.Contains("-32601", responseScript);
+        Assert.Contains("NonExistentService", responseScript);
+        Assert.Contains("nonExistentMethod", responseScript);
+        Assert.Contains("diagnosticCode", responseScript);
+        Assert.Contains("1002", responseScript);
+        Assert.Contains("hint", responseScript);
+        Assert.Contains("JsExport", responseScript);
+    }
+
+    [Fact]
+    public void Method_not_found_response_omits_hint_when_EnableDevToolsDiagnostics_false()
+    {
+        var dispatcher = new TestDispatcher();
+        var adapter = MockWebViewAdapter.Create();
+        var core = new WebViewCore(adapter, dispatcher);
+        core.EnableWebMessageBridge(new WebMessageBridgeOptions
+        {
+            AllowedOrigins = new HashSet<string> { "*" },
+            EnableDevToolsDiagnostics = false
+        });
+        var scripts = new List<string>();
+        adapter.ScriptCallback = script => { scripts.Add(script); return null; };
+
+        adapter.RaiseWebMessage(
+            """{"jsonrpc":"2.0","id":"m-1","method":"NonExistentService.nonExistentMethod","params":{}}""",
+            "*", core.ChannelId);
+        dispatcher.RunAll();
+
+        var responseScript = scripts.FirstOrDefault(s => s.Contains("_onResponse") && s.Contains("error"));
+        Assert.NotNull(responseScript);
+        Assert.Contains("diagnosticCode", responseScript);
+        Assert.Contains("1002", responseScript);
+        Assert.DoesNotContain("hint", responseScript);
+    }
+}
