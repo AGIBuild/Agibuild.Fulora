@@ -478,9 +478,9 @@ partial class BuildTask
                     RunPmInstall(pm, tempDir);
                     var output = RunProcessCaptureAll("node", "consumer.mjs", workingDirectory: tempDir, timeoutMs: 30_000);
                     var passed = output.Contains("SMOKE_PASSED", StringComparison.Ordinal);
-                    checks.Add(new { manager = pm, phase = "consume-smoke", passed });
+                    checks.Add(new { manager = pm, phase = "consume-smoke", passed, output = passed ? null : output });
                     if (!passed)
-                        failures.Add($"{pm} consume smoke did not produce SMOKE_PASSED.");
+                        failures.Add($"{pm} consume smoke did not produce SMOKE_PASSED. Output: {output}");
                 }
                 catch (Exception ex)
                 {
@@ -519,9 +519,9 @@ partial class BuildTask
                         workingDirectory: ltsDir,
                         timeoutMs: 10_000);
                     var passed = importCheck.Contains("LTS_IMPORT_OK", StringComparison.Ordinal);
-                    checks.Add(new { phase = "node-lts-import", nodeVersion, passed });
+                    checks.Add(new { phase = "node-lts-import", nodeVersion, passed, output = passed ? null : importCheck, scriptContent = passed ? null : File.ReadAllText(ltsDir / "check.mjs") });
                     if (!passed)
-                        failures.Add($"Node LTS import check failed on {nodeVersion}.");
+                        failures.Add($"Node LTS import check failed on {nodeVersion}. Output: {importCheck}");
                 }
                 catch (Exception ex)
                 {
