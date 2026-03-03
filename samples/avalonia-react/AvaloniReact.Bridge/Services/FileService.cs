@@ -30,13 +30,17 @@ public class FileService : IFileService
 
         foreach (var file in Directory.GetFiles(targetPath))
         {
-            var info = new FileInfo(file);
-            entries.Add(new FileEntry(
-                info.Name,
-                info.FullName,
-                IsDirectory: false,
-                Size: info.Length,
-                LastModified: info.LastWriteTimeUtc));
+            try
+            {
+                var info = new FileInfo(file);
+                entries.Add(new FileEntry(
+                    info.Name,
+                    info.FullName,
+                    IsDirectory: false,
+                    Size: info.Length,
+                    LastModified: info.LastWriteTimeUtc));
+            }
+            catch (FileNotFoundException) { }
         }
 
         return Task.FromResult(entries.OrderByDescending(e => e.IsDirectory).ThenBy(e => e.Name).ToList());

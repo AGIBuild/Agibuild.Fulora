@@ -38,13 +38,15 @@ public sealed class BridgeEvent<T> : IBridgeEvent<T>
     }
 
     /// <summary>Connects the RPC push delegate. Called by generated registration code.</summary>
-    internal void Connect(Action<T> handler)
+    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+    public void Connect(Action<T> handler)
     {
         lock (_lock) { _emitHandler = handler; }
     }
 
     /// <summary>Disconnects the RPC push delegate. Called on Remove.</summary>
-    internal void Disconnect()
+    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+    public void Disconnect()
     {
         lock (_lock) { _emitHandler = null; }
     }

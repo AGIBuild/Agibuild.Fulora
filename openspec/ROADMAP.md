@@ -8,8 +8,8 @@
 ## Phase Overview
 
 ```
-Phase 0 (✅ Done)        Phase 1 (✅ Done)       Phase 2 (✅ Core Done)  Phase 3 (✅ Done)      Phase 4 (✅ Done)      Phase 5 (✅ Completed)        Phase 6 (✅ Completed)         Phase 7 (✅ Completed)       Phase 8 (✅ Completed)                Phase 9 (🚧 Active)
-Foundation               Type-Safe Bridge       SPA Hosting            Polish & GA            Application Shell       Framework Positioning Foundation Governance Productization        Release Orchestration      Bridge V2 & Platform Parity          GA Release Readiness
+Phase 0 (✅ Done)        Phase 1 (✅ Done)       Phase 2 (✅ Core Done)  Phase 3 (✅ Done)      Phase 4 (✅ Done)      Phase 5 (✅ Completed)        Phase 6 (✅ Completed)         Phase 7 (✅ Completed)       Phase 8 (✅ Completed)                Phase 9 (✅ Completed)             Phase 10 (🚧 Active)
+Foundation               Type-Safe Bridge       SPA Hosting            Polish & GA            Application Shell       Framework Positioning Foundation Governance Productization        Release Orchestration      Bridge V2 & Platform Parity          GA Release Readiness               Production Operations & Ecosystem
 ─────────────────────    ────────────────────   ────────────────────   ────────────────────   ────────────────────    ───────────────────────────────── ─────────────────────────────── ─────────────────────────   ─────────────────────────────────   ─────────────────────────
 • Cross-platform         • Source Generator     • Custom protocol      • Project template      • Shell policy kit      • Typed capability gateway                                                                 • Bridge diagnostics safety net     • API surface freeze
   adapters (5 platforms)   for C# → JS proxy      file serving        • API docs site           (new window/download/ • Policy-first execution model                                                                • Cancellation + streaming parity   • npm bridge publication
@@ -583,7 +583,7 @@ dotnet new agibuild-hybrid -n MyApp --frontend react
 
 ---
 
-## Phase 9: GA Release Readiness (🚧 Active)
+## Phase 9: GA Release Readiness (✅ Completed)
 
 **Goal**: Convert the fully-featured preview framework into a 1.0 stable release with frozen API surface, published npm package, updated performance baselines, and structured release artifacts.
 
@@ -609,17 +609,97 @@ dotnet new agibuild-hybrid -n MyApp --frontend react
 
 ---
 
+## Phase 10: Production Operations & Ecosystem Maturity (🚧 Active)
+
+**Goal**: Bridge the gap between "framework GA" and "enterprise production deployment" by adding operational infrastructure (auto-update, DI integration for post-1.0 services, OpenTelemetry provider) and platform maturity (NativeAOT validation, GTK hardening).
+
+**Why now**: Phase 9 delivered 1.0 GA with comprehensive runtime capabilities (config, telemetry, message bus, theme sync, global shortcuts, tray/menu). Phase 10 focuses on the operational and deployment concerns that enterprise teams evaluate before committing to production: automated updates, structured observability export, AOT readiness, and full DI ergonomics.
+
+### Milestones
+
+| Milestone | Focus | Outcome | Status |
+|---|---|---|---|
+| **M10.1 Auto-Update Framework** | `IAutoUpdateService` with check/download/apply lifecycle | Policy-governed, platform-aware application update pipeline | 🚧 Active |
+| **M10.2 DI Integration for Post-1.0 Services** | Register config, telemetry, message bus, auto-update in DI | One-liner service registration for all framework capabilities | Pending |
+| **M10.3 OpenTelemetry Provider Package** | `Agibuild.Fulora.Telemetry.OpenTelemetry` NuGet package | Bridge call spans and metrics export to OTLP-compatible backends | Pending |
+| **M10.4 NativeAOT CI Validation** | Publish + run validation for AOT-compiled sample | Trimming-safe guarantee with CI enforcement | Pending |
+| **M10.5 GTK/Linux Production Readiness** | DevTools integration, smoke suite, CI lane | Linux platform promoted from preview to production-ready | Pending |
+
+### Deliverables
+
+| # | Deliverable | Depends On | Est. Complexity |
+|---|---|---|---|
+| 10.1 | Auto-update service contracts + runtime implementation | Phase 9 (stable API) | High |
+| 10.2 | DI extension methods for config, telemetry, message bus, auto-update | 10.1 | Low |
+| 10.3 | OpenTelemetry provider package with bridge span instrumentation | Phase 9 telemetry contracts | Medium |
+| 10.4 | NativeAOT publish validation target + documentation | Phase 9 source generators | Medium |
+| 10.5 | GTK DevTools + Linux smoke suite + CI lane | Phase 0 GTK adapter | Medium |
+
+### Phase 10 Exit Criteria
+
+- Auto-update lifecycle (check → download → verify → apply/restart) is testable via mock adapter.
+- All post-1.0 services are registerable via `services.AddFulora()` one-liner.
+- OpenTelemetry provider produces valid OTLP spans for bridge calls.
+- At least one sample publishes and runs with `PublishAot=true`.
+- GTK adapter passes smoke suite on Linux CI.
+
+---
+
+## Phase 11: Ecosystem Expansion & Cross-Framework (Planned)
+
+**Goal**: Expand the framework reach beyond Avalonia to .NET MAUI, establish a plugin ecosystem with discovery and registry, and provide IDE tooling for bridge development.
+
+### Milestones
+
+| Milestone | Focus | Outcome |
+|---|---|---|
+| **M11.1 MAUI Host Adapter** | `Agibuild.Fulora.Maui` package with full bridge + SPA hosting | Fulora available to MAUI developers on Android/iOS/Windows |
+| **M11.2 Plugin Registry & Discovery** | Central plugin catalog, `fulora search plugin`, version compatibility | Discoverable ecosystem with quality signals |
+| **M11.3 Official Plugin Suite** | Database, HTTP client, notifications, file system plugins | Rich out-of-box capability set |
+| **M11.4 IDE Extensions** | VS Code / Rider extension for bridge call visualization | Visual bridge debugging without DevTools overlay |
+
+### Phase 11 Exit Criteria
+
+- MAUI host adapter passes bridge + SPA hosting integration tests on at least 2 platforms.
+- `fulora search plugin` returns results from a published registry.
+- At least 3 official plugins published with NuGet + npm pairs.
+
+---
+
+## Phase 12: Advanced Runtime & Performance (Planned)
+
+**Goal**: Deliver native-grade runtime capabilities including offline support, shared state management, and worker-based computation offload.
+
+### Milestones
+
+| Milestone | Focus | Outcome |
+|---|---|---|
+| **M12.1 Offline Caching & Service Worker** | Complete SW lifecycle, fetch strategies, offline fallback | PWA-grade offline experience in hybrid apps |
+| **M12.2 Shared State Management** | Cross-WebView reactive state with conflict resolution | Multi-window state consistency without manual sync |
+| **M12.3 Web Worker Bridge** | Bridge calls from Web Workers, computation offload | Heavy computation without blocking UI thread |
+| **M12.4 Sentry Crash Reporting Package** | `Agibuild.Fulora.Telemetry.Sentry` NuGet package | One-line crash reporting with bridge breadcrumbs |
+
+### Phase 12 Exit Criteria
+
+- Service Worker registration and offline fallback are testable in contract tests.
+- Cross-WebView state synchronization has deterministic conflict resolution semantics.
+- Web Worker bridge calls have same type safety as main-thread bridge calls.
+
+---
+
 ## Dependencies & Prerequisites
 
 ```
-Phase 0 (✅ Done) ──► Phase 1 (✅ Done) ──► Phase 2 (✅ Core Done) ──► Phase 3 (✅ Done) ──► Phase 4 (✅ Done) ──► Phase 5 (✅ Completed) ──► Phase 6 (✅ Completed) ──► Phase 7 (✅ Completed) ──► Phase 8 (✅ Completed) ──► Phase 9 (🚧 Active)
-     │                      │                       │                         │                         │                                   │
-     │                      │                       └── 2.4 depends on Phase 1│                         └── framework-positioning baseline    └── release orchestration builds on deterministic transition governance
-     │                      └── Builds on F6 (RPC) + F3 (Policy)             └── Shell layer builds on stable GA baseline
-     └── F4 (WebResource) used by Phase 2                                       and reuses bridge/policy/testability core
+Phase 0-9 (✅ Done) ──► Phase 10 (🚧 Active) ──► Phase 11 (Planned) ──► Phase 12 (Planned)
+                              │                         │                      │
+                              ├── Auto-update            ├── MAUI adapter        ├── Offline/SW
+                              ├── DI integration         ├── Plugin registry     ├── Shared state
+                              ├── OpenTelemetry pkg      ├── Official plugins    ├── Worker bridge
+                              ├── NativeAOT validation   └── IDE extensions      └── Sentry pkg
+                              └── GTK production
 ```
 
-Phase 1 and Phase 2 are mostly independent in implementation but compose together. Phase 4 depends on completed GA-grade stability from Phase 3 and focuses on product-level shell capabilities. Phase 5 pivots from "host count" to "framework positioning + dual-path adoption" with web-first developer productivity and AI-agent operability as primary outcomes. Phase 6 productizes transition governance baselines, Phase 7 closes release orchestration governance, Phase 8 closes Bridge V2 expressiveness and platform parity consolidation, and Phase 9 targets 1.0 GA release readiness.
+Phase 10 builds on the stable 1.0 API surface to add operational infrastructure. Phase 11 expands the ecosystem horizontally (MAUI, plugins, IDE). Phase 12 deepens runtime capabilities for advanced use cases.
 
 ---
 
@@ -635,6 +715,10 @@ Phase 1 and Phase 2 are mostly independent in implementation but compose togethe
 | Shell behavior divergence across platforms | Inconsistent user experience | Define shell semantics in contracts first; enforce via CT + platform IT |
 | Host capability overexposure | Security/compliance risk | Keep capabilities opt-in, explicit allowlists, and policy-based authorization |
 | Multi-window lifecycle complexity | Leaks/crashes under stress | Introduce stress/soak lanes and deterministic teardown assertions per window |
+| Auto-update signature verification | Malicious update injection | Require cryptographic signature verification before applying updates |
+| NativeAOT trimming removes bridge types | Runtime failures in AOT builds | Source generators are inherently trim-safe; validate with CI publish target |
+| OpenTelemetry SDK version coupling | Dependency conflicts with host apps | Use separate NuGet package with explicit version range |
+| MAUI host adapter platform divergence | Inconsistent behavior across MAUI targets | Reuse core runtime contracts; platform-specific code only in adapter layer |
 
 ---
 

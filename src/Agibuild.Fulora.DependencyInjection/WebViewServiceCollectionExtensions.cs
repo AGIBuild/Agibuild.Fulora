@@ -23,7 +23,7 @@ public static class WebViewServiceCollectionExtensions
     /// <code>
     /// var services = new ServiceCollection();
     /// services.AddLogging(b =&gt; b.AddConsole());
-    /// services.AddWebView();
+    /// services.AddFulora();
     /// var provider = services.BuildServiceProvider();
     /// provider.UseAgibuildWebView(); // ← initializes global WebView config
     /// </code>

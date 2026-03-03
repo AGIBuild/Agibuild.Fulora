@@ -35,21 +35,25 @@ Use this page as the entry point based on what you want to do next.
 
 ## Current Product Objective
 
-Current roadmap focus is **Phase 5: Framework Positioning Foundation**:
+Current roadmap focus is **Phase 10: Production Operations & Ecosystem Maturity**:
 
-- Turn C# + web into a default-ready product architecture, not just a rendering choice
-- Consolidate host/system operations behind one typed capability gateway
-- Enforce policy-first execution with deterministic `allow/deny/failure` semantics
-- Emit machine-checkable diagnostics for CI and AI-agent automation
-- Provide a web-first template flow while retaining control-level integration freedom
+- Auto-update framework with policy-governed check/download/apply lifecycle
+- DI integration for all post-1.0 services (config, telemetry, message bus, auto-update)
+- OpenTelemetry provider package for bridge call observability
+- NativeAOT publish validation and CI enforcement
+- GTK/Linux promotion from preview to production-ready
 
 ## Roadmap Snapshot
 
 | Phase | Focus | Status |
 |---|---|---|
-| Phase 0 | Foundation | ✅ Done |
-| Phase 1 | Type-Safe Bridge | ✅ Done |
-| Phase 2 | SPA Hosting | ✅ Core Done |
-| Phase 3 | Polish & GA | ✅ Done |
+| Phase 0–3 | Foundation, Bridge, SPA, Polish | ✅ Done |
 | Phase 4 | Application Shell | ✅ Done |
-| Phase 5 | Framework Positioning Foundation | ✅ Completed |
+| Phase 5 | Framework Positioning | ✅ Done |
+| Phase 6 | Governance Productization | ✅ Done |
+| Phase 7 | Release Orchestration | ✅ Done |
+| Phase 8 | Bridge V2 & Platform Parity | ✅ Done |
+| Phase 9 | GA Release (1.0.0) | ✅ Done |
+| Phase 10 | Production Operations & Ecosystem | 🚧 Active |
+| Phase 11 | Cross-Framework & Plugin Ecosystem | Planned |
+| Phase 12 | Advanced Runtime & Performance | Planned |

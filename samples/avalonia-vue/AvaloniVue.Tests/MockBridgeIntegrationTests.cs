@@ -1,5 +1,6 @@
 using Agibuild.Fulora;
 using AvaloniVue.Bridge.Services;
+using IAppThemeService = AvaloniVue.Bridge.Services.IThemeService;
 
 namespace AvaloniVue.Tests;
 
@@ -30,10 +31,10 @@ public class MockBridgeIntegrationTests
         var mock = new MockBridgeService();
 
         mock.SetupProxy<IUiNotificationService>(new StubNotificationService());
-        mock.SetupProxy<IThemeService>(new StubThemeService());
+        mock.SetupProxy<IAppThemeService>(new StubThemeService());
 
         Assert.NotNull(mock.GetProxy<IUiNotificationService>());
-        Assert.NotNull(mock.GetProxy<IThemeService>());
+        Assert.NotNull(mock.GetProxy<IAppThemeService>());
     }
 
     private class StubNotificationService : IUiNotificationService
@@ -41,7 +42,7 @@ public class MockBridgeIntegrationTests
         public Task ShowNotification(string message, string type) => Task.CompletedTask;
     }
 
-    private class StubThemeService : IThemeService
+    private class StubThemeService : IAppThemeService
     {
         public Task SetTheme(string theme) => Task.CompletedTask;
     }

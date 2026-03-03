@@ -29,7 +29,6 @@ public static class ServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        // Register a synchronization-context dispatcher as IWebViewDispatcher (transient — one per resolve).
         services.AddTransient<IWebViewDispatcher>(_ => new SynchronizationContextWebViewDispatcher());
 
         services.AddSingleton<Func<IWebViewDispatcher, IWebView>>(sp =>
@@ -42,5 +41,99 @@ public static class ServiceCollectionExtensions
         });
 
         return services;
+    }
+
+    /// <summary>
+    /// Registers all Fulora framework services: WebView, telemetry, config, message bus,
+    /// and auto-update. This is the recommended one-liner for full framework adoption.
+    /// <para>
+    /// <list type="bullet">
+    ///   <item>WebView factory and dispatcher</item>
+    ///   <item><see cref="ITelemetryProvider"/> (defaults to <see cref="NullTelemetryProvider"/>)</item>
+    ///   <item><see cref="IWebViewMessageBus"/> (singleton)</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// For config and auto-update, use the chained methods:
+    /// <c>services.AddFulora().AddJsonFileConfig(path).AddAutoUpdate(options)</c>.
+    /// </para>
+    /// </summary>
+    public static FuloraServiceBuilder AddFulora(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.AddWebView();
+        services.AddSingleton<IWebViewMessageBus, WebViewMessageBus>();
+
+        if (!services.Any(d => d.ServiceType == typeof(ITelemetryProvider)))
+        {
+            services.AddSingleton<ITelemetryProvider>(NullTelemetryProvider.Instance);
+        }
+
+        return new FuloraServiceBuilder(services);
+    }
+}
+
+/// <summary>
+/// Fluent builder returned by <see cref="ServiceCollectionExtensions.AddFulora"/> for chaining
+/// optional service registrations.
+/// </summary>
+public sealed class FuloraServiceBuilder
+{
+    /// <summary>The underlying service collection.</summary>
+    public IServiceCollection Services { get; }
+
+    internal FuloraServiceBuilder(IServiceCollection services) => Services = services;
+
+    /// <summary>
+    /// Registers a <see cref="JsonFileConfigProvider"/> as the <see cref="IConfigProvider"/>.
+    /// </summary>
+    /// <param name="filePath">Path to the JSON configuration file.</param>
+    public FuloraServiceBuilder AddJsonFileConfig(string filePath)
+    {
+        Services.AddSingleton<IConfigProvider>(new JsonFileConfigProvider(filePath));
+        return this;
+    }
+
+    /// <summary>
+    /// Registers a <see cref="RemoteConfigProvider"/> as the <see cref="IConfigProvider"/>,
+    /// optionally falling back to a local JSON file.
+    /// </summary>
+    /// <param name="remoteUri">The remote configuration endpoint URI.</param>
+    /// <param name="localFallbackPath">Optional local JSON fallback file path.</param>
+    public FuloraServiceBuilder AddRemoteConfig(Uri remoteUri, string? localFallbackPath = null)
+    {
+        Services.AddSingleton<IConfigProvider>(sp =>
+        {
+            var httpClient = sp.GetService<HttpClient>() ?? new HttpClient();
+            IConfigProvider? fallback = localFallbackPath != null
+                ? new JsonFileConfigProvider(localFallbackPath)
+                : null;
+            return new RemoteConfigProvider(httpClient, remoteUri, fallback);
+        });
+        return this;
+    }
+
+    /// <summary>
+    /// Registers a custom <see cref="ITelemetryProvider"/> (replaces the default no-op provider).
+    /// </summary>
+    public FuloraServiceBuilder AddTelemetry(ITelemetryProvider provider)
+    {
+        ArgumentNullException.ThrowIfNull(provider);
+        var existing = Services.FirstOrDefault(d => d.ServiceType == typeof(ITelemetryProvider));
+        if (existing != null) Services.Remove(existing);
+        Services.AddSingleton(provider);
+        return this;
+    }
+
+    /// <summary>
+    /// Registers the <see cref="AutoUpdateService"/> with the given options and platform provider.
+    /// </summary>
+    public FuloraServiceBuilder AddAutoUpdate(AutoUpdateOptions options, IAutoUpdatePlatformProvider platformProvider)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(platformProvider);
+        Services.AddSingleton<IAutoUpdateService>(new AutoUpdateService(platformProvider, options));
+        return this;
     }
 }
