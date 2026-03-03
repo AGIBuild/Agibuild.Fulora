@@ -464,6 +464,10 @@ partial class BuildTask
                         """;
                     File.WriteAllText(tempDir / "package.json", packageJson);
 
+                    // Force yarn (classic or berry) to use node_modules layout
+                    if (string.Equals(pm, "yarn", StringComparison.OrdinalIgnoreCase))
+                        File.WriteAllText(tempDir / ".yarnrc.yml", "nodeLinker: node-modules\n");
+
                     var consumerScript = """
                         import { createBridgeClient } from '@agibuild/bridge';
                         if (typeof createBridgeClient !== 'function') process.exit(1);
@@ -472,7 +476,7 @@ partial class BuildTask
                     File.WriteAllText(tempDir / "consumer.mjs", consumerScript);
 
                     RunPmInstall(pm, tempDir);
-                    var output = RunPmNode(pm, "consumer.mjs", tempDir);
+                    var output = RunProcessCaptureAll("node", "consumer.mjs", workingDirectory: tempDir, timeoutMs: 30_000);
                     var passed = output.Contains("SMOKE_PASSED", StringComparison.Ordinal);
                     checks.Add(new { manager = pm, phase = "consume-smoke", passed });
                     if (!passed)
@@ -493,16 +497,26 @@ partial class BuildTask
                 }
             }
 
-            // 3. Node LTS import smoke (ESM-aware: use dynamic import() instead of require())
+            // 3. Node LTS import smoke (write temp file to avoid argument escaping issues)
             if (File.Exists(distIndex))
             {
+                AbsolutePath? ltsDir = null;
                 try
                 {
-                    var escapedPath = distIndex.ToString().Replace("\\", "/");
+                    ltsDir = (AbsolutePath)Path.GetFullPath(Path.Combine(Path.GetTempPath(), $"bridge-lts-smoke-{Guid.NewGuid():N}"));
+                    Directory.CreateDirectory(ltsDir);
+
+                    var fileUrl = new Uri(distIndex).AbsoluteUri;
+                    var ltsScript = $"""
+                        const b = await import('{fileUrl}');
+                        if (typeof b.createBridgeClient !== 'function') process.exit(1);
+                        console.log('LTS_IMPORT_OK');
+                        """;
+                    File.WriteAllText(ltsDir / "check.mjs", ltsScript);
+
                     var importCheck = RunProcessCaptureAll(
-                        "node",
-                        $"-e \"import('{escapedPath}').then(b => {{ if (typeof b.createBridgeClient !== 'function') process.exit(1); console.log('LTS_IMPORT_OK'); }}).catch(e => {{ console.error(e); process.exit(1); }})\"",
-                        workingDirectory: RootDirectory,
+                        "node", "check.mjs",
+                        workingDirectory: ltsDir,
                         timeoutMs: 10_000);
                     var passed = importCheck.Contains("LTS_IMPORT_OK", StringComparison.Ordinal);
                     checks.Add(new { phase = "node-lts-import", nodeVersion, passed });
@@ -513,6 +527,14 @@ partial class BuildTask
                 {
                     failures.Add($"Node LTS import check failed: {ex.Message}");
                     checks.Add(new { phase = "node-lts-import", nodeVersion, passed = false, error = ex.Message });
+                }
+                finally
+                {
+                    if (ltsDir is not null && Directory.Exists(ltsDir))
+                    {
+                        try { Directory.Delete(ltsDir, recursive: true); }
+                        catch { /* best-effort cleanup */ }
+                    }
                 }
             }
             else
@@ -990,21 +1012,6 @@ partial class BuildTask
             RunProcessCaptureAllChecked(pm, "install",
                 workingDirectory: workingDirectory, timeoutMs: 120_000);
         }
-    }
-
-    static string RunPmNode(string pm, string script, string workingDirectory)
-    {
-        if (string.Equals(pm, "yarn", StringComparison.OrdinalIgnoreCase))
-        {
-            if (OperatingSystem.IsWindows())
-                return RunProcessCaptureAll("cmd.exe", $"/d /s /c \"yarn node {script}\"",
-                    workingDirectory: workingDirectory, timeoutMs: 30_000);
-            return RunProcessCaptureAll("yarn", $"node {script}",
-                workingDirectory: workingDirectory, timeoutMs: 30_000);
-        }
-
-        return RunProcessCaptureAll("node", script,
-            workingDirectory: workingDirectory, timeoutMs: 30_000);
     }
 
     Target ContinuousTransitionGateGovernance => _ => _
