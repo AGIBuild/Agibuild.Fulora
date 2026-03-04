@@ -31,14 +31,18 @@ partial class BuildTask
         };
 
         process.Start();
-        var output = process.StandardOutput.ReadToEnd();
-        var error = process.StandardError.ReadToEnd();
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
 
         if (!process.WaitForExit(timeoutMs))
         {
             process.Kill();
+            process.WaitForExit();
             throw new TimeoutException($"Process 'npm {arguments}' timed out after {timeoutMs}ms.");
         }
+
+        var output = stdoutTask.GetAwaiter().GetResult();
+        var error = stderrTask.GetAwaiter().GetResult();
 
         if (process.ExitCode != 0)
         {

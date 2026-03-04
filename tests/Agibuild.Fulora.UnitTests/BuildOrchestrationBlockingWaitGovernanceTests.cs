@@ -43,6 +43,14 @@ public sealed class BuildOrchestrationBlockingWaitGovernanceTests
                 "Build.IsHttpReady",
                 "Synchronous readiness probe for port polling remains constrained to build helper boundary."),
             new AllowedBlockingWait(
+                "stdoutTask.GetAwaiter().GetResult()",
+                "Build.RunProcess/RunProcessCaptureAll/RunProcessCaptureAllChecked",
+                "Async stream reads prevent stdout/stderr buffer-full deadlock; collected after WaitForExit."),
+            new AllowedBlockingWait(
+                "stderrTask.GetAwaiter().GetResult()",
+                "Build.RunProcess/RunProcessCaptureAll/RunProcessCaptureAllChecked",
+                "Async stream reads prevent stdout/stderr buffer-full deadlock; collected after WaitForExit."),
+            new AllowedBlockingWait(
                 "Thread.Sleep(500);",
                 "Build.WaitForPort",
                 "Port readiness loop uses bounded short polling interval.")
