@@ -113,7 +113,7 @@ public sealed class GlobalShortcutServiceIntegrationTests
 
         await service.Unregister("a");
         Assert.False(await service.IsRegistered("a"));
-        Assert.Equal(1, (await service.GetRegistered()).Length);
+        Assert.Single(await service.GetRegistered());
     }
 
     [Fact]

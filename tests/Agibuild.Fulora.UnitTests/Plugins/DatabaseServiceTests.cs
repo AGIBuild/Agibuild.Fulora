@@ -113,7 +113,7 @@ public sealed class DatabaseServiceTests
         Assert.Equal(3, total);
 
         var result = await db.Query("SELECT COUNT(*) as cnt FROM t");
-        Assert.Equal(1, result.Rows.Count);
+        Assert.Single(result.Rows);
         Assert.Equal(3L, result.Rows[0]["cnt"]);
     }
 
