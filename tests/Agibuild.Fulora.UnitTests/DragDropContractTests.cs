@@ -135,4 +135,161 @@ public sealed class DragDropContractTests
         Assert.Equal("application/pdf", full.MimeType);
         Assert.Equal(2048, full.Size);
     }
+
+    [Fact]
+    public async Task DragDropBridgeService_returns_null_initially()
+    {
+        var dispatcher = new TestDispatcher();
+        var adapter = MockWebViewAdapter.CreateWithDragDrop();
+        using var core = new WebViewCore(adapter, dispatcher);
+        var service = new DragDropBridgeService(core);
+
+        var result = await service.GetLastDropPayloadAsync(TestContext.Current.CancellationToken);
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task DragDropBridgeService_captures_drop_payload()
+    {
+        var dispatcher = new TestDispatcher();
+        var adapter = MockWebViewAdapter.CreateWithDragDrop();
+        using var core = new WebViewCore(adapter, dispatcher);
+        var service = new DragDropBridgeService(core);
+
+        var payload = new DragDropPayload { Text = "dropped text" };
+        ((MockWebViewAdapterWithDragDrop)adapter).RaiseDropCompleted(new DropEventArgs
+        {
+            Payload = payload,
+            Effect = DragDropEffects.Copy
+        });
+
+        var result = await service.GetLastDropPayloadAsync(TestContext.Current.CancellationToken);
+        Assert.NotNull(result);
+        Assert.Equal("dropped text", result!.Text);
+    }
+
+    [Fact]
+    public async Task DragDropBridgeService_reports_supported()
+    {
+        var dispatcher = new TestDispatcher();
+        var adapter = MockWebViewAdapter.CreateWithDragDrop();
+        using var core = new WebViewCore(adapter, dispatcher);
+        var service = new DragDropBridgeService(core);
+
+        Assert.True(await service.IsDragDropSupportedAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task DragDropBridgeService_reports_unsupported_when_adapter_has_no_drag_drop()
+    {
+        var dispatcher = new TestDispatcher();
+        var adapter = MockWebViewAdapter.Create();
+        using var core = new WebViewCore(adapter, dispatcher);
+        var service = new DragDropBridgeService(core);
+
+        Assert.False(await service.IsDragDropSupportedAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task DragDropBridgeService_delivers_multiple_drops()
+    {
+        var dispatcher = new TestDispatcher();
+        var adapter = MockWebViewAdapter.CreateWithDragDrop();
+        using var core = new WebViewCore(adapter, dispatcher);
+        var service = new DragDropBridgeService(core);
+        var dd = (MockWebViewAdapterWithDragDrop)adapter;
+
+        // First drop
+        dd.RaiseDropCompleted(new DropEventArgs
+        {
+            Payload = new DragDropPayload { Text = "first" },
+            Effect = DragDropEffects.Copy
+        });
+        var r1 = await service.GetLastDropPayloadAsync(TestContext.Current.CancellationToken);
+        Assert.Equal("first", r1?.Text);
+
+        // Second drop replaces first
+        dd.RaiseDropCompleted(new DropEventArgs
+        {
+            Payload = new DragDropPayload { Text = "second" },
+            Effect = DragDropEffects.Move
+        });
+        var r2 = await service.GetLastDropPayloadAsync(TestContext.Current.CancellationToken);
+        Assert.Equal("second", r2?.Text);
+    }
+
+    [Fact]
+    public async Task DragDropBridgeService_captures_file_payload()
+    {
+        var dispatcher = new TestDispatcher();
+        var adapter = MockWebViewAdapter.CreateWithDragDrop();
+        using var core = new WebViewCore(adapter, dispatcher);
+        var service = new DragDropBridgeService(core);
+        var dd = (MockWebViewAdapterWithDragDrop)adapter;
+
+        var payload = new DragDropPayload
+        {
+            Files = new List<FileDropInfo>
+            {
+                new FileDropInfo("/tmp/test.txt", "text/plain", 1024),
+                new FileDropInfo("/tmp/image.png", "image/png", 2048)
+            }
+        };
+        dd.RaiseDropCompleted(new DropEventArgs { Payload = payload, Effect = DragDropEffects.Copy });
+
+        var result = await service.GetLastDropPayloadAsync(TestContext.Current.CancellationToken);
+        Assert.NotNull(result?.Files);
+        Assert.Equal(2, result!.Files!.Count);
+        Assert.Equal("/tmp/test.txt", result.Files[0].Path);
+        Assert.Equal(2048, result.Files[1].Size);
+    }
+
+    [Fact]
+    public async Task DragDropBridgeService_captures_html_and_uri()
+    {
+        var dispatcher = new TestDispatcher();
+        var adapter = MockWebViewAdapter.CreateWithDragDrop();
+        using var core = new WebViewCore(adapter, dispatcher);
+        var service = new DragDropBridgeService(core);
+        var dd = (MockWebViewAdapterWithDragDrop)adapter;
+
+        dd.RaiseDropCompleted(new DropEventArgs
+        {
+            Payload = new DragDropPayload
+            {
+                Html = "<b>bold</b>",
+                Uri = "https://example.com"
+            },
+            Effect = DragDropEffects.Link
+        });
+
+        var result = await service.GetLastDropPayloadAsync(TestContext.Current.CancellationToken);
+        Assert.Equal("<b>bold</b>", result?.Html);
+        Assert.Equal("https://example.com", result?.Uri);
+    }
+
+    [Fact]
+    public void DragDropEffects_bitwise_or_combines()
+    {
+        var combined = DragDropEffects.Copy | DragDropEffects.Move;
+        Assert.True(combined.HasFlag(DragDropEffects.Copy));
+        Assert.True(combined.HasFlag(DragDropEffects.Move));
+        Assert.False(combined.HasFlag(DragDropEffects.Link));
+    }
+
+    [Fact]
+    public void DropEventArgs_holds_all_properties()
+    {
+        var args = new DropEventArgs
+        {
+            Payload = new DragDropPayload { Text = "hello" },
+            Effect = DragDropEffects.Move,
+            X = 100.5,
+            Y = 200.3
+        };
+        Assert.Equal("hello", args.Payload.Text);
+        Assert.Equal(DragDropEffects.Move, args.Effect);
+        Assert.Equal(100.5, args.X);
+        Assert.Equal(200.3, args.Y);
+    }
 }

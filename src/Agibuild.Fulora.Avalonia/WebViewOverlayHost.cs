@@ -2,6 +2,9 @@ using Avalonia;
 
 namespace Agibuild.Fulora;
 
+/// <summary>Result of hit-testing a point against the overlay.</summary>
+public enum OverlayHitTestResult { Overlay, Passthrough }
+
 /// <summary>
 /// Manages a companion overlay for rendering Avalonia controls above WebView.
 /// Core behavior: tracks WebView bounds and renders OverlayContent.
@@ -13,6 +16,9 @@ public sealed class WebViewOverlayHost : IDisposable
     private bool _disposed;
     private Rect _bounds;
     private double _dpiScale;
+
+    /// <summary>Whether the overlay currently has keyboard focus.</summary>
+    public bool HasKeyboardFocus { get; set; }
 
     internal WebViewOverlayHost(WebView owner)
     {
@@ -74,6 +80,24 @@ public sealed class WebViewOverlayHost : IDisposable
     {
         _isVisible = false;
     }
+
+    /// <summary>
+    /// Hit-tests a point to determine whether it should be handled by the overlay or passed through.
+    /// </summary>
+    public OverlayHitTestResult HitTest(double x, double y)
+    {
+        if (Content is null || !_isVisible) return OverlayHitTestResult.Passthrough;
+        if (x >= _bounds.X && x <= _bounds.X + _bounds.Width &&
+            y >= _bounds.Y && y <= _bounds.Y + _bounds.Height)
+            return OverlayHitTestResult.Overlay;
+        return OverlayHitTestResult.Passthrough;
+    }
+
+    /// <summary>Transfers keyboard focus from overlay to WebView.</summary>
+    public void TransferFocusToWebView() => HasKeyboardFocus = false;
+
+    /// <summary>Transfers keyboard focus from WebView to overlay.</summary>
+    public void TransferFocusToOverlay() => HasKeyboardFocus = true;
 
     /// <inheritdoc />
     public void Dispose()

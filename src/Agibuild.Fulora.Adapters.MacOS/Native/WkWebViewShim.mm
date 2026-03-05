@@ -67,6 +67,30 @@ typedef bool (*ag_wk_scheme_request_cb)(
     const char** out_mime_type_utf8, // C# allocates, native will NOT free
     int* out_status_code);
 
+// Drag-drop callbacks.
+typedef void (*ag_wk_drag_entered_cb)(
+    void* user_data,
+    const char* files_json_utf8, // JSON array of {path, mimeType, size}
+    const char* text_utf8,
+    const char* html_utf8,
+    const char* uri_utf8,
+    double x, double y);
+
+typedef void (*ag_wk_drag_updated_cb)(
+    void* user_data,
+    double x, double y);
+
+typedef void (*ag_wk_drag_exited_cb)(
+    void* user_data);
+
+typedef void (*ag_wk_drop_performed_cb)(
+    void* user_data,
+    const char* files_json_utf8,
+    const char* text_utf8,
+    const char* html_utf8,
+    const char* uri_utf8,
+    double x, double y);
+
 struct ag_wk_callbacks
 {
     ag_wk_policy_request_cb on_policy_request;
@@ -76,6 +100,10 @@ struct ag_wk_callbacks
     ag_wk_download_cb on_download;
     ag_wk_permission_cb on_permission;
     ag_wk_scheme_request_cb on_scheme_request;
+    ag_wk_drag_entered_cb on_drag_entered;
+    ag_wk_drag_updated_cb on_drag_updated;
+    ag_wk_drag_exited_cb on_drag_exited;
+    ag_wk_drop_performed_cb on_drop_performed;
 };
 
 typedef void* ag_wk_handle;
@@ -179,13 +207,17 @@ struct shim_state;
 @property(nonatomic, assign) shim_state* state;
 @end
 
+@interface AgWkWebView : WKWebView <NSDraggingDestination>
+@property(nonatomic, assign) shim_state* state;
+@end
+
 struct shim_state
 {
     ag_wk_callbacks callbacks {};
     void* user_data { nullptr };
 
     __strong NSView* parent_view { nil };
-    __strong WKWebView* web_view { nil };
+    __strong AgWkWebView* web_view { nil };
     __strong WKUserContentController* user_content_controller { nil };
     __strong WKWebsiteDataStore* data_store { nil }; // non-nil after attach
 
@@ -548,6 +580,112 @@ static int map_error_status(NSError* error)
 
 @end
 
+@implementation AgWkWebView
+
+- (instancetype)initWithFrame:(NSRect)frameRect configuration:(WKWebViewConfiguration*)configuration
+{
+    self = [super initWithFrame:frameRect configuration:configuration];
+    if (self)
+    {
+        [self registerForDraggedTypes:@[
+            NSPasteboardTypeFileURL,
+            NSPasteboardTypeString,
+            NSPasteboardTypeHTML,
+            NSPasteboardTypeURL
+        ]];
+    }
+    return self;
+}
+
+- (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender
+{
+    shim_state* s = self.state;
+    if (s == nullptr || !s->callbacks.on_drag_entered) return NSDragOperationCopy;
+
+    NSPasteboard* pb = [sender draggingPasteboard];
+    NSPoint pt = [self convertPoint:[sender draggingLocation] fromView:nil];
+
+    NSString* filesJson = [self extractFilesJson:pb];
+    NSString* text = [pb stringForType:NSPasteboardTypeString];
+    NSString* html = [pb stringForType:NSPasteboardTypeHTML];
+    NSString* uri = nil;
+    NSArray* urls = [pb readObjectsForClasses:@[[NSURL class]] options:nil];
+    if (urls.count > 0 && [urls[0] isKindOfClass:[NSURL class]])
+        uri = [urls[0] absoluteString];
+
+    s->callbacks.on_drag_entered(s->user_data,
+        filesJson ? [filesJson UTF8String] : "[]",
+        text ? [text UTF8String] : NULL,
+        html ? [html UTF8String] : NULL,
+        uri ? [uri UTF8String] : NULL,
+        pt.x, pt.y);
+
+    return NSDragOperationCopy;
+}
+
+- (NSDragOperation)draggingUpdated:(id<NSDraggingInfo>)sender
+{
+    shim_state* s = self.state;
+    if (s == nullptr || !s->callbacks.on_drag_updated) return NSDragOperationCopy;
+    NSPoint pt = [self convertPoint:[sender draggingLocation] fromView:nil];
+    s->callbacks.on_drag_updated(s->user_data, pt.x, pt.y);
+    return NSDragOperationCopy;
+}
+
+- (void)draggingExited:(id<NSDraggingInfo>)sender
+{
+    shim_state* s = self.state;
+    if (s != nullptr && s->callbacks.on_drag_exited)
+        s->callbacks.on_drag_exited(s->user_data);
+}
+
+- (BOOL)performDragOperation:(id<NSDraggingInfo>)sender
+{
+    shim_state* s = self.state;
+    if (s == nullptr || !s->callbacks.on_drop_performed) return NO;
+
+    NSPasteboard* pb = [sender draggingPasteboard];
+    NSPoint pt = [self convertPoint:[sender draggingLocation] fromView:nil];
+
+    NSString* filesJson = [self extractFilesJson:pb];
+    NSString* text = [pb stringForType:NSPasteboardTypeString];
+    NSString* html = [pb stringForType:NSPasteboardTypeHTML];
+    NSString* uri = nil;
+    NSArray* urls = [pb readObjectsForClasses:@[[NSURL class]] options:nil];
+    if (urls.count > 0 && [urls[0] isKindOfClass:[NSURL class]])
+        uri = [urls[0] absoluteString];
+
+    s->callbacks.on_drop_performed(s->user_data,
+        filesJson ? [filesJson UTF8String] : "[]",
+        text ? [text UTF8String] : NULL,
+        html ? [html UTF8String] : NULL,
+        uri ? [uri UTF8String] : NULL,
+        pt.x, pt.y);
+
+    return YES;
+}
+
+- (NSString*)extractFilesJson:(NSPasteboard*)pb
+{
+    NSArray<NSURL*>* fileURLs = [pb readObjectsForClasses:@[[NSURL class]]
+                                                  options:@{NSPasteboardURLReadingFileURLsOnlyKey: @YES}];
+    if (!fileURLs || fileURLs.count == 0) return @"[]";
+
+    NSMutableArray* items = [NSMutableArray array];
+    for (NSURL* url in fileURLs)
+    {
+        NSString* path = [url path];
+        NSDictionary* attrs = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil];
+        NSNumber* size = attrs[NSFileSize];
+        [items addObject:@{@"path": path ?: @"", @"size": size ?: [NSNull null]}];
+    }
+
+    NSData* json = [NSJSONSerialization dataWithJSONObject:items options:0 error:nil];
+    return json ? [[NSString alloc] initWithData:json encoding:NSUTF8StringEncoding] : @"[]";
+}
+
+@end
+
 extern "C" {
 
 ag_wk_handle ag_wk_create(const ag_wk_callbacks* callbacks, void* user_data)
@@ -634,7 +772,8 @@ bool ag_wk_attach(ag_wk_handle handle, void* nsview_ptr)
                 s->data_store = [WKWebsiteDataStore defaultDataStore];
             }
 
-            s->web_view = [[WKWebView alloc] initWithFrame:parent.bounds configuration:cfg];
+            s->web_view = [[AgWkWebView alloc] initWithFrame:parent.bounds configuration:cfg];
+            s->web_view.state = s;
             s->web_view.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 
             // M2: DevTools (inspectable) — requires macOS 13.3+.

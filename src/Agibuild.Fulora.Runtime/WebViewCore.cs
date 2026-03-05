@@ -97,6 +97,9 @@ public sealed class WebViewCore : IWebView, IWebViewAdapterHost, IDisposable
     private readonly IContextMenuAdapter? _contextMenuAdapter;
     private readonly IDragDropAdapter? _dragDropAdapter;
 
+    /// <summary>Whether the current adapter supports drag-and-drop.</summary>
+    internal bool HasDragDropSupport => _dragDropAdapter is not null;
+
     private bool _webMessageBridgeEnabled;
     private IWebMessagePolicy? _webMessagePolicy;
     private IWebMessageDropDiagnosticsSink? _webMessageDropDiagnosticsSink;

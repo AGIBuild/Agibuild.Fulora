@@ -8,6 +8,7 @@ namespace Agibuild.Fulora.Adapters.Gtk;
 
 internal sealed class GtkWebViewAdapter : IWebViewAdapter, INativeWebViewHandleProvider, ICookieAdapter, IWebViewAdapterOptions,
     ICustomSchemeAdapter, IDownloadAdapter, IPermissionAdapter, ICommandAdapter, IScreenshotAdapter,
+    IDragDropAdapter,
     // PLATFORM LIMITATION: IPrintAdapter is not implemented. WebKitGTK lacks a PDF export API.
     // webkit_web_view_get_snapshot returns a Cairo raster surface, not PDF.
     // webkit_print_operation_run_dialog requires a display and cannot produce headless PDF output.
@@ -34,6 +35,10 @@ internal sealed class GtkWebViewAdapter : IWebViewAdapter, INativeWebViewHandleP
     private NativeMethods.PermissionCb? _permissionCb;
     private NativeMethods.SchemeRequestCb? _schemeRequestCb;
     private NativeMethods.ContextMenuCb? _contextMenuCb;
+    private NativeMethods.DragEnteredCb? _dragEnteredCb;
+    private NativeMethods.DragUpdatedCb? _dragUpdatedCb;
+    private NativeMethods.DragExitedCb? _dragExitedCb;
+    private NativeMethods.DropPerformedCb? _dropPerformedCb;
 
     private byte[]? _schemeResponseData;
     private GCHandle _schemeResponsePin;
@@ -66,6 +71,11 @@ internal sealed class GtkWebViewAdapter : IWebViewAdapter, INativeWebViewHandleP
     public event EventHandler<DownloadRequestedEventArgs>? DownloadRequested;
     public event EventHandler<PermissionRequestedEventArgs>? PermissionRequested;
     public event EventHandler<WebResourceRequestedEventArgs>? WebResourceRequested;
+
+    public event EventHandler<DragEventArgs>? DragEntered;
+    public event EventHandler<DragEventArgs>? DragOver;
+    public event EventHandler<EventArgs>? DragLeft;
+    public event EventHandler<DropEventArgs>? DropCompleted;
 
     private IReadOnlyList<CustomSchemeRegistration>? _customSchemes;
 
@@ -170,6 +180,11 @@ internal sealed class GtkWebViewAdapter : IWebViewAdapter, INativeWebViewHandleP
                 isEditable);
         };
 
+        _dragEnteredCb = OnDragEnteredNative;
+        _dragUpdatedCb = OnDragUpdatedNative;
+        _dragExitedCb = OnDragExitedNative;
+        _dropPerformedCb = OnDropPerformedNative;
+
         _callbacks = new NativeMethods.AgGtkCallbacks
         {
             on_policy_request = Marshal.GetFunctionPointerForDelegate(_policyCb),
@@ -180,6 +195,10 @@ internal sealed class GtkWebViewAdapter : IWebViewAdapter, INativeWebViewHandleP
             on_permission = Marshal.GetFunctionPointerForDelegate(_permissionCb),
             on_scheme_request = Marshal.GetFunctionPointerForDelegate(_schemeRequestCb),
             on_context_menu = Marshal.GetFunctionPointerForDelegate(_contextMenuCb),
+            on_drag_entered = Marshal.GetFunctionPointerForDelegate(_dragEnteredCb),
+            on_drag_updated = Marshal.GetFunctionPointerForDelegate(_dragUpdatedCb),
+            on_drag_exited = Marshal.GetFunctionPointerForDelegate(_dragExitedCb),
+            on_drop_performed = Marshal.GetFunctionPointerForDelegate(_dropPerformedCb),
         };
 
         _native = NativeMethods.Create(ref _callbacks, GCHandle.ToIntPtr(_selfHandle));
@@ -933,6 +952,71 @@ internal sealed class GtkWebViewAdapter : IWebViewAdapter, INativeWebViewHandleP
         return true;
     }
 
+    // ==== Drag-drop native callbacks ====
+
+    private static void OnDragEnteredNative(IntPtr userData, IntPtr filesJsonUtf8, IntPtr textUtf8, double x, double y)
+    {
+        var adapter = NativeMethods.FromUserData(userData);
+        if (adapter is null) return;
+        var payload = ParseGtkDragPayload(filesJsonUtf8, textUtf8);
+        adapter.DragEntered?.Invoke(adapter, new DragEventArgs
+        {
+            Payload = payload, AllowedEffects = DragDropEffects.Copy, Effect = DragDropEffects.Copy, X = x, Y = y
+        });
+    }
+
+    private static void OnDragUpdatedNative(IntPtr userData, double x, double y)
+    {
+        var adapter = NativeMethods.FromUserData(userData);
+        adapter?.DragOver?.Invoke(adapter, new DragEventArgs
+        {
+            Payload = new DragDropPayload(), AllowedEffects = DragDropEffects.Copy, Effect = DragDropEffects.Copy, X = x, Y = y
+        });
+    }
+
+    private static void OnDragExitedNative(IntPtr userData)
+    {
+        var adapter = NativeMethods.FromUserData(userData);
+        adapter?.DragLeft?.Invoke(adapter, EventArgs.Empty);
+    }
+
+    private static void OnDropPerformedNative(IntPtr userData, IntPtr filesJsonUtf8, IntPtr textUtf8, double x, double y)
+    {
+        var adapter = NativeMethods.FromUserData(userData);
+        if (adapter is null) return;
+        var payload = ParseGtkDragPayload(filesJsonUtf8, textUtf8);
+        adapter.DropCompleted?.Invoke(adapter, new DropEventArgs
+        {
+            Payload = payload, Effect = DragDropEffects.Copy, X = x, Y = y
+        });
+    }
+
+    private static DragDropPayload ParseGtkDragPayload(IntPtr filesJsonUtf8, IntPtr textUtf8)
+    {
+        var payload = new DragDropPayload
+        {
+            Text = NativeMethods.PtrToStringNullable(textUtf8)
+        };
+
+        var filesJson = NativeMethods.PtrToStringNullable(filesJsonUtf8);
+        if (!string.IsNullOrEmpty(filesJson) && filesJson != "[]")
+        {
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(filesJson);
+                var files = new List<FileDropInfo>();
+                foreach (var elem in doc.RootElement.EnumerateArray())
+                {
+                    var path = elem.GetProperty("path").GetString() ?? "";
+                    files.Add(new FileDropInfo(path, null, null));
+                }
+                payload = payload with { Files = files };
+            }
+            catch { }
+        }
+        return payload;
+    }
+
     // ==== Native interop ====
 
     private static class NativeMethods
@@ -1037,6 +1121,10 @@ internal sealed class GtkWebViewAdapter : IWebViewAdapter, INativeWebViewHandleP
             public IntPtr on_permission;
             public IntPtr on_scheme_request;
             public IntPtr on_context_menu;
+            public IntPtr on_drag_entered;
+            public IntPtr on_drag_updated;
+            public IntPtr on_drag_exited;
+            public IntPtr on_drop_performed;
         }
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -1049,6 +1137,18 @@ internal sealed class GtkWebViewAdapter : IWebViewAdapter, INativeWebViewHandleP
             int mediaType,
             IntPtr mediaSourceUriUtf8,
             [MarshalAs(UnmanagedType.I1)] bool isEditable);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void DragEnteredCb(IntPtr userData, IntPtr filesJsonUtf8, IntPtr textUtf8, double x, double y);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void DragUpdatedCb(IntPtr userData, double x, double y);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void DragExitedCb(IntPtr userData);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void DropPerformedCb(IntPtr userData, IntPtr filesJsonUtf8, IntPtr textUtf8, double x, double y);
 
         // Cookie management
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]

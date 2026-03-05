@@ -48,4 +48,4 @@
 
 - [x] 6.1 Create `docs/hybrid-e2e-testing-guide.md` with CI setup guide
 - [x] 6.2 Document limitations: mock adapter doesn't execute JS
-- [ ] 6.3 Add E2E test lane to Nuke build (optional, platform-gated)
+- [x] 6.3 Add E2E test lane to Nuke build (optional, platform-gated)

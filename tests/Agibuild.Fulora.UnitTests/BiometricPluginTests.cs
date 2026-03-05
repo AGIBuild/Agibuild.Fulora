@@ -117,6 +117,46 @@ public class BiometricPluginTests
         Assert.Equal("not_available", result.ErrorCode);
     }
 
+    [Fact]
+    public async Task MacOsBiometricProvider_reports_availability_based_on_platform()
+    {
+        var provider = new MacOsBiometricProvider();
+        var availability = await provider.CheckAvailabilityAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(OperatingSystem.IsMacOS(), availability.IsAvailable);
+        Assert.Equal("touchid", availability.BiometricType);
+        Assert.Equal(OperatingSystem.IsMacOS() ? null : "wrong_platform", availability.ErrorReason);
+    }
+
+    [Fact]
+    public async Task WindowsBiometricProvider_reports_availability_based_on_platform()
+    {
+        var provider = new WindowsBiometricProvider();
+        var availability = await provider.CheckAvailabilityAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(OperatingSystem.IsWindows(), availability.IsAvailable);
+        Assert.Equal("windows_hello", availability.BiometricType);
+        Assert.Equal(OperatingSystem.IsWindows() ? null : "wrong_platform", availability.ErrorReason);
+    }
+
+    [Fact]
+    public async Task IosBiometricProvider_auth_returns_not_implemented()
+    {
+        var provider = new IosBiometricProvider();
+        var result = await provider.AuthenticateAsync("test", TestContext.Current.CancellationToken);
+        Assert.False(result.Success);
+        Assert.Equal("not_implemented", result.ErrorCode);
+        Assert.NotNull(result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task AndroidBiometricProvider_auth_returns_not_implemented()
+    {
+        var provider = new AndroidBiometricProvider();
+        var result = await provider.AuthenticateAsync("test", TestContext.Current.CancellationToken);
+        Assert.False(result.Success);
+        Assert.Equal("not_implemented", result.ErrorCode);
+        Assert.NotNull(result.ErrorMessage);
+    }
+
     private sealed class ThrowingBiometricProvider : IBiometricPlatformProvider
     {
         public Task<BiometricAvailability> CheckAvailabilityAsync(CancellationToken ct = default) =>

@@ -22,28 +22,28 @@
 
 ## 3. Windows Adapter (Phase 1: IDropTarget)
 
-- [ ] 3.1 Spike: validate `IDropTarget`/`RegisterDragDrop` compatibility with WebView2
-- [ ] 3.2 Implement `IDropTarget` on the WebView2 HWND
-- [ ] 3.3 Extract `IDataObject` contents: files, text, HTML
-- [ ] 3.4 Map to `DragDropPayload` and raise adapter events
+- [x] 3.1 Spike: validate `IDropTarget`/`RegisterDragDrop` compatibility with WebView2
+- [x] 3.2 Implement `IDropTarget` on the WebView2 HWND
+- [x] 3.3 Extract `IDataObject` contents: files, text, HTML
+- [x] 3.4 Map to `DragDropPayload` and raise adapter events
 
 ## 4. macOS Adapter
 
-- [ ] 4.1 Extend `WkWebViewShim.mm`: register for dragged types
-- [ ] 4.2 Implement `NSDraggingDestination` methods
-- [ ] 4.3 Extract file URLs and text from pasteboard
-- [ ] 4.4 Forward to C# adapter
+- [x] 4.1 Extend `WkWebViewShim.mm`: register for dragged types
+- [x] 4.2 Implement `NSDraggingDestination` methods
+- [x] 4.3 Extract file URLs and text from pasteboard
+- [x] 4.4 Forward to C# adapter
 
 ## 5. Bridge Service
 
-- [ ] 5.1 Define `IDragDropBridgeService` (`[JsExport]`) with event-based API
-- [ ] 5.2 Implement `DragDropBridgeService` consuming `WebViewCore` drag events
-- [ ] 5.3 Add JS helpers to `@agibuild/bridge`
-- [ ] 5.4 Add TypeScript types
+- [x] 5.1 Define `IDragDropBridgeService` (`[JsExport]`) with event-based API
+- [x] 5.2 Implement `DragDropBridgeService` consuming `WebViewCore` drag events
+- [x] 5.3 Add JS helpers to `@agibuild/bridge`
+- [x] 5.4 Add TypeScript types
 
 ## 6. Tests
 
-- [ ] 6.1 CT: Windows `IDropTarget` mock with file data → payload extraction
-- [ ] 6.2 CT: macOS pasteboard mock → payload extraction
-- [ ] 6.3 CT: Bridge service delivers events to JS handler
+- [x] 6.1 CT: Windows `IDropTarget` mock with file data → payload extraction
+- [x] 6.2 CT: macOS pasteboard mock → payload extraction
+- [x] 6.3 CT: Bridge service delivers events to JS handler
 - [ ] 6.4 Manual IT: drag file from Finder/Explorer onto WebView

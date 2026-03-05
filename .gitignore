@@ -204,11 +204,19 @@ PublishScripts/
 **/[Pp]ackages/*
 # except build/, which is used as an MSBuild target.
 !**/[Pp]ackages/build/
-# except packages/bridge/ (npm workspace, not NuGet)
+# except npm workspace packages (not NuGet)
 !packages/bridge/
 !packages/bridge/**
 packages/bridge/dist/
 packages/bridge/node_modules/
+!packages/bridge-plugin-biometric/
+!packages/bridge-plugin-biometric/**
+packages/bridge-plugin-biometric/dist/
+packages/bridge-plugin-biometric/node_modules/
+!packages/bridge-plugin-drag-drop/
+!packages/bridge-plugin-drag-drop/**
+packages/bridge-plugin-drag-drop/dist/
+packages/bridge-plugin-drag-drop/node_modules/
 # Uncomment if necessary however generally it will be regenerated when needed
 #!**/[Pp]ackages/repositories.config
 # NuGet v3's project.json files produces more ignorable files

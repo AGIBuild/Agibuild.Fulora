@@ -12,10 +12,10 @@
 ## 2. Platform Providers
 
 - [x] 2.1 Implement `InMemoryBiometricProvider` (testing/fallback)
-- [ ] 2.2 Implement macOS provider using `LAContext` via ObjCRuntime
-- [ ] 2.3 Implement iOS provider (`LocalAuthentication` framework)
-- [ ] 2.4 Implement Windows provider using `UserConsentVerifier`
-- [ ] 2.5 Implement Android provider using `BiometricPrompt` API
+- [x] 2.2 Implement macOS provider using `LAContext` via ObjCRuntime
+- [x] 2.3 Implement iOS provider (`LocalAuthentication` framework)
+- [x] 2.4 Implement Windows provider using `UserConsentVerifier`
+- [x] 2.5 Implement Android provider using `BiometricPrompt` API
 - [x] 2.6 Implement Linux stub: returns `platform_not_supported`
 
 ## 3. Service Implementation

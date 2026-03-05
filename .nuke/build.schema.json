@@ -37,6 +37,7 @@
         "Coverage",
         "DependencyVulnerabilityGovernance",
         "DistributionReadinessGovernance",
+        "E2ETests",
         "IntegrationTests",
         "NpmPublish",
         "NugetPackageTest",

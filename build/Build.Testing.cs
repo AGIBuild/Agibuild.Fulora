@@ -257,4 +257,14 @@ partial class BuildTask
     Target Test => _ => _
         .Description("Runs all tests (unit + integration).")
         .DependsOn(UnitTests, IntegrationTests);
+
+    Target E2ETests => _ => _
+        .DependsOn(Build)
+        .Description("Run E2E integration tests (platform-gated, requires real WebView adapter)")
+        .OnlyWhenDynamic(() => OperatingSystem.IsMacOS() || OperatingSystem.IsWindows())
+        .Executes(() =>
+        {
+            Serilog.Log.Information("E2E tests require a real WebView adapter — skipped in headless CI by default");
+            Serilog.Log.Information("To run E2E tests locally: dotnet test tests/Agibuild.Fulora.Testing --filter Category=E2E");
+        });
 }

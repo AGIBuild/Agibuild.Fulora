@@ -20,29 +20,29 @@
 
 ## 3. Input Routing
 
-- [ ] 3.1 Implement hit-test: overlay receives input → test against Avalonia visual tree
-- [ ] 3.2 If hit on Avalonia control → handle in overlay
-- [ ] 3.3 If hit on transparent area → forward input to WebView
-- [ ] 3.4 Handle keyboard focus routing between overlay and WebView
+- [x] 3.1 Implement hit-test: overlay receives input → test against Avalonia visual tree
+- [x] 3.2 If hit on Avalonia control → handle in overlay
+- [x] 3.3 If hit on transparent area → forward input to WebView
+- [x] 3.4 Handle keyboard focus routing between overlay and WebView
 
 ## 4. Windows Platform Implementation
 
-- [ ] 4.1 Create overlay as child window with `WS_EX_LAYERED | WS_EX_TOOLWINDOW`
-- [ ] 4.2 Use `SetLayeredWindowAttributes` for transparency
-- [ ] 4.3 Use `DeferWindowPos` for flicker-free position updates
-- [ ] 4.4 Handle `WM_NCHITTEST` for input passthrough
+- [x] 4.1 Create overlay as child window with `WS_EX_LAYERED | WS_EX_TOOLWINDOW`
+- [x] 4.2 Use `SetLayeredWindowAttributes` for transparency
+- [x] 4.3 Use `DeferWindowPos` for flicker-free position updates
+- [x] 4.4 Handle `WM_NCHITTEST` for input passthrough
 
 ## 5. macOS Platform Implementation
 
-- [ ] 5.1 Create overlay as `NSPanel` with transparency
-- [ ] 5.2 Set panel level and parent window relationship
-- [ ] 5.3 Implement `ignoresMouseEvents` toggling for input passthrough
+- [x] 5.1 Create overlay as `NSPanel` with transparency
+- [x] 5.2 Set panel level and parent window relationship
+- [x] 5.3 Implement `ignoresMouseEvents` toggling for input passthrough
 
 ## 6. Linux Platform Implementation
 
-- [ ] 6.1 Create overlay using GTK + RGBA visual
-- [ ] 6.2 Position tracking via GTK signals
-- [ ] 6.3 Input passthrough via shape regions
+- [x] 6.1 Create overlay using GTK + RGBA visual
+- [x] 6.2 Position tracking via GTK signals
+- [x] 6.3 Input passthrough via shape regions
 
 ## 7. Integration Tests
 

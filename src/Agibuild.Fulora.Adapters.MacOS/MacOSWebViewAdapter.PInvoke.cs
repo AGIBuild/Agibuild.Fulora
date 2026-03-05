@@ -10,7 +10,7 @@ namespace Agibuild.Fulora.Adapters.MacOS;
 [SupportedOSPlatform("macos")]
 internal sealed class MacOSWebViewAdapter : IWebViewAdapter, INativeWebViewHandleProvider, ICookieAdapter, IWebViewAdapterOptions,
     ICustomSchemeAdapter, IDownloadAdapter, IPermissionAdapter, ICommandAdapter, IScreenshotAdapter, IPrintAdapter,
-    IFindInPageAdapter, IZoomAdapter, IPreloadScriptAdapter, IContextMenuAdapter, IDevToolsAdapter
+    IFindInPageAdapter, IZoomAdapter, IPreloadScriptAdapter, IContextMenuAdapter, IDevToolsAdapter, IDragDropAdapter
 {
     private static bool DiagnosticsEnabled
         => string.Equals(Environment.GetEnvironmentVariable("AGIBUILD_WEBVIEW_DIAG"), "1", StringComparison.Ordinal);
@@ -32,6 +32,10 @@ internal sealed class MacOSWebViewAdapter : IWebViewAdapter, INativeWebViewHandl
     private NativeMethods.DownloadCb? _downloadCb;
     private NativeMethods.PermissionCb? _permissionCb;
     private NativeMethods.SchemeRequestCb? _schemeRequestCb;
+    private NativeMethods.DragEnteredCb? _dragEnteredCb;
+    private NativeMethods.DragUpdatedCb? _dragUpdatedCb;
+    private NativeMethods.DragExitedCb? _dragExitedCb;
+    private NativeMethods.DropPerformedCb? _dropPerformedCb;
 
     // Pinned buffers for scheme responses (kept alive until next request)
     private byte[]? _schemeResponseData;
@@ -66,6 +70,11 @@ internal sealed class MacOSWebViewAdapter : IWebViewAdapter, INativeWebViewHandl
     public event EventHandler<DownloadRequestedEventArgs>? DownloadRequested;
     public event EventHandler<PermissionRequestedEventArgs>? PermissionRequested;
     public event EventHandler<WebResourceRequestedEventArgs>? WebResourceRequested;
+
+    public event EventHandler<DragEventArgs>? DragEntered;
+    public event EventHandler<DragEventArgs>? DragOver;
+    public event EventHandler<EventArgs>? DragLeft;
+    public event EventHandler<DropEventArgs>? DropCompleted;
 
     // Custom scheme registrations stored for future native implementation.
     private IReadOnlyList<CustomSchemeRegistration>? _customSchemes;
@@ -169,6 +178,15 @@ internal sealed class MacOSWebViewAdapter : IWebViewAdapter, INativeWebViewHandl
             on_permission = Marshal.GetFunctionPointerForDelegate(_permissionCb),
             on_scheme_request = Marshal.GetFunctionPointerForDelegate(_schemeRequestCb),
         };
+
+        _dragEnteredCb = OnDragEnteredNative;
+        _dragUpdatedCb = OnDragUpdatedNative;
+        _dragExitedCb = OnDragExitedNative;
+        _dropPerformedCb = OnDropPerformedNative;
+        _callbacks.on_drag_entered = Marshal.GetFunctionPointerForDelegate(_dragEnteredCb);
+        _callbacks.on_drag_updated = Marshal.GetFunctionPointerForDelegate(_dragUpdatedCb);
+        _callbacks.on_drag_exited = Marshal.GetFunctionPointerForDelegate(_dragExitedCb);
+        _callbacks.on_drop_performed = Marshal.GetFunctionPointerForDelegate(_dropPerformedCb);
 
         _native = NativeMethods.Create(ref _callbacks, GCHandle.ToIntPtr(_selfHandle));
         if (_native == IntPtr.Zero)
@@ -934,6 +952,84 @@ internal sealed class MacOSWebViewAdapter : IWebViewAdapter, INativeWebViewHandl
         return true;
     }
 
+    // ==================== IDragDropAdapter ====================
+
+    private static void OnDragEnteredNative(IntPtr userData, IntPtr filesJsonUtf8, IntPtr textUtf8, IntPtr htmlUtf8, IntPtr uriUtf8, double x, double y)
+    {
+        var adapter = NativeMethods.FromUserData(userData);
+        if (adapter is null) return;
+        var payload = ParseDragPayload(filesJsonUtf8, textUtf8, htmlUtf8, uriUtf8);
+        adapter.DragEntered?.Invoke(adapter, new DragEventArgs
+        {
+            Payload = payload,
+            AllowedEffects = DragDropEffects.Copy,
+            Effect = DragDropEffects.Copy,
+            X = x, Y = y
+        });
+    }
+
+    private static void OnDragUpdatedNative(IntPtr userData, double x, double y)
+    {
+        var adapter = NativeMethods.FromUserData(userData);
+        if (adapter is null) return;
+        adapter.DragOver?.Invoke(adapter, new DragEventArgs
+        {
+            Payload = new DragDropPayload(),
+            AllowedEffects = DragDropEffects.Copy,
+            Effect = DragDropEffects.Copy,
+            X = x, Y = y
+        });
+    }
+
+    private static void OnDragExitedNative(IntPtr userData)
+    {
+        var adapter = NativeMethods.FromUserData(userData);
+        adapter?.DragLeft?.Invoke(adapter, EventArgs.Empty);
+    }
+
+    private static void OnDropPerformedNative(IntPtr userData, IntPtr filesJsonUtf8, IntPtr textUtf8, IntPtr htmlUtf8, IntPtr uriUtf8, double x, double y)
+    {
+        var adapter = NativeMethods.FromUserData(userData);
+        if (adapter is null) return;
+        var payload = ParseDragPayload(filesJsonUtf8, textUtf8, htmlUtf8, uriUtf8);
+        adapter.DropCompleted?.Invoke(adapter, new DropEventArgs
+        {
+            Payload = payload,
+            Effect = DragDropEffects.Copy,
+            X = x, Y = y
+        });
+    }
+
+    private static DragDropPayload ParseDragPayload(IntPtr filesJsonUtf8, IntPtr textUtf8, IntPtr htmlUtf8, IntPtr uriUtf8)
+    {
+        var payload = new DragDropPayload
+        {
+            Text = NativeMethods.PtrToStringNullable(textUtf8),
+            Html = NativeMethods.PtrToStringNullable(htmlUtf8),
+            Uri = NativeMethods.PtrToStringNullable(uriUtf8)
+        };
+
+        var filesJson = NativeMethods.PtrToStringNullable(filesJsonUtf8);
+        if (!string.IsNullOrEmpty(filesJson) && filesJson != "[]")
+        {
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(filesJson);
+                var files = new List<FileDropInfo>();
+                foreach (var elem in doc.RootElement.EnumerateArray())
+                {
+                    var path = elem.GetProperty("path").GetString() ?? "";
+                    long? size = elem.TryGetProperty("size", out var sizeProp) && sizeProp.ValueKind == System.Text.Json.JsonValueKind.Number
+                        ? sizeProp.GetInt64() : null;
+                    files.Add(new FileDropInfo(path, null, size));
+                }
+                payload = payload with { Files = files };
+            }
+            catch { /* malformed JSON — ignore */ }
+        }
+        return payload;
+    }
+
     // ==== Native interop ====
 
     private static class NativeMethods
@@ -1003,6 +1099,18 @@ internal sealed class MacOSWebViewAdapter : IWebViewAdapter, INativeWebViewHandl
             IntPtr* outMimeTypeUtf8,
             int* outStatusCode);
 
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void DragEnteredCb(IntPtr userData, IntPtr filesJsonUtf8, IntPtr textUtf8, IntPtr htmlUtf8, IntPtr uriUtf8, double x, double y);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void DragUpdatedCb(IntPtr userData, double x, double y);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void DragExitedCb(IntPtr userData);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void DropPerformedCb(IntPtr userData, IntPtr filesJsonUtf8, IntPtr textUtf8, IntPtr htmlUtf8, IntPtr uriUtf8, double x, double y);
+
         [StructLayout(LayoutKind.Sequential)]
         internal struct AgWkCallbacks
         {
@@ -1013,6 +1121,10 @@ internal sealed class MacOSWebViewAdapter : IWebViewAdapter, INativeWebViewHandl
             public IntPtr on_download;
             public IntPtr on_permission;
             public IntPtr on_scheme_request;
+            public IntPtr on_drag_entered;
+            public IntPtr on_drag_updated;
+            public IntPtr on_drag_exited;
+            public IntPtr on_drop_performed;
         }
 
         internal static MacOSWebViewAdapter? FromUserData(IntPtr userData)

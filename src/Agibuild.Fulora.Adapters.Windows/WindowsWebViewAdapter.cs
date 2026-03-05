@@ -10,7 +10,8 @@ namespace Agibuild.Fulora.Adapters.Windows;
 [SupportedOSPlatform("windows")]
 internal sealed class WindowsWebViewAdapter : IWebViewAdapter, INativeWebViewHandleProvider, ICookieAdapter, IWebViewAdapterOptions,
     ICustomSchemeAdapter, IDownloadAdapter, IPermissionAdapter, ICommandAdapter, IScreenshotAdapter, IPrintAdapter,
-    IFindInPageAdapter, IZoomAdapter, IPreloadScriptAdapter, IAsyncPreloadScriptAdapter, IContextMenuAdapter, IDevToolsAdapter
+    IFindInPageAdapter, IZoomAdapter, IPreloadScriptAdapter, IAsyncPreloadScriptAdapter, IContextMenuAdapter, IDevToolsAdapter,
+    IDragDropAdapter
 {
     private static bool DiagnosticsEnabled
         => string.Equals(Environment.GetEnvironmentVariable("AGIBUILD_WEBVIEW_DIAG"), "1", StringComparison.Ordinal);
@@ -42,6 +43,9 @@ internal sealed class WindowsWebViewAdapter : IWebViewAdapter, INativeWebViewHan
     // Window subclass for resize tracking
     private WndProcDelegate? _wndProcDelegate;
     private IntPtr _originalWndProc;
+
+    // OLE drag-drop
+    private DropTargetImpl? _dropTarget;
 
     // Readiness: Attach starts async init; operations queue until ready.
     private TaskCompletionSource? _readyTcs;
@@ -107,6 +111,13 @@ internal sealed class WindowsWebViewAdapter : IWebViewAdapter, INativeWebViewHan
         add { }
         remove { }
     }
+
+    // ==================== IDragDropAdapter ====================
+
+    public event EventHandler<DragEventArgs>? DragEntered;
+    public event EventHandler<DragEventArgs>? DragOver;
+    public event EventHandler<EventArgs>? DragLeft;
+    public event EventHandler<DropEventArgs>? DropCompleted;
 
     // ==================== ICustomSchemeAdapter ====================
 
@@ -257,6 +268,7 @@ internal sealed class WindowsWebViewAdapter : IWebViewAdapter, INativeWebViewHan
             UpdateControllerBounds();
             _controller.IsVisible = true;
             SubclassParentWindow();
+            RegisterDropTarget();
 
             // Apply pending environment options
             ApplyPendingOptions();
@@ -406,6 +418,7 @@ internal sealed class WindowsWebViewAdapter : IWebViewAdapter, INativeWebViewHan
         Diag("Teardown: core begin");
         try
         {
+            UnregisterDropTarget();
             RestoreParentWindowProc();
 
             if (_webView is not null)
@@ -1525,6 +1538,110 @@ internal sealed class WindowsWebViewAdapter : IWebViewAdapter, INativeWebViewHan
 
     [DllImport("user32.dll")]
     private static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("ole32.dll")]
+    private static extern int RegisterDragDrop(IntPtr hwnd, IDropTarget pDropTarget);
+
+    [DllImport("ole32.dll")]
+    private static extern int RevokeDragDrop(IntPtr hwnd);
+
+    [DllImport("ole32.dll")]
+    private static extern int OleInitialize(IntPtr pvReserved);
+
+    [ComImport]
+    [Guid("00000122-0000-0000-C000-000000000046")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IDropTarget
+    {
+        [PreserveSig]
+        int DragEnter([MarshalAs(UnmanagedType.Interface)] object pDataObj, uint grfKeyState, long pt, ref uint pdwEffect);
+
+        [PreserveSig]
+        int DragOver(uint grfKeyState, long pt, ref uint pdwEffect);
+
+        [PreserveSig]
+        int DragLeave();
+
+        [PreserveSig]
+        int Drop([MarshalAs(UnmanagedType.Interface)] object pDataObj, uint grfKeyState, long pt, ref uint pdwEffect);
+    }
+
+    [ComVisible(true)]
+    private sealed class DropTargetImpl : IDropTarget
+    {
+        private readonly WindowsWebViewAdapter _adapter;
+
+        public DropTargetImpl(WindowsWebViewAdapter adapter) => _adapter = adapter;
+
+        public int DragEnter(object pDataObj, uint grfKeyState, long pt, ref uint pdwEffect)
+        {
+            var payload = ExtractPayload(pDataObj);
+            var (x, y) = PointFromLParam(pt);
+            var args = new DragEventArgs { Payload = payload, AllowedEffects = DragDropEffects.Copy, Effect = DragDropEffects.Copy, X = x, Y = y };
+            _adapter.DragEntered?.Invoke(_adapter, args);
+            pdwEffect = (uint)args.Effect;
+            return 0; // S_OK
+        }
+
+        public int DragOver(uint grfKeyState, long pt, ref uint pdwEffect)
+        {
+            var (x, y) = PointFromLParam(pt);
+            var args = new DragEventArgs { Payload = new DragDropPayload(), AllowedEffects = DragDropEffects.Copy, Effect = DragDropEffects.Copy, X = x, Y = y };
+            _adapter.DragOver?.Invoke(_adapter, args);
+            pdwEffect = (uint)args.Effect;
+            return 0;
+        }
+
+        public int DragLeave()
+        {
+            _adapter.DragLeft?.Invoke(_adapter, EventArgs.Empty);
+            return 0;
+        }
+
+        public int Drop(object pDataObj, uint grfKeyState, long pt, ref uint pdwEffect)
+        {
+            var payload = ExtractPayload(pDataObj);
+            var (x, y) = PointFromLParam(pt);
+            var args = new DropEventArgs { Payload = payload, Effect = DragDropEffects.Copy, X = x, Y = y };
+            _adapter.DropCompleted?.Invoke(_adapter, args);
+            pdwEffect = (uint)DragDropEffects.Copy;
+            return 0;
+        }
+
+        private static (double x, double y) PointFromLParam(long pt)
+        {
+            // POINTL: x = low 32 bits, y = high 32 bits
+            int x = (int)(pt & 0xFFFFFFFF);
+            int y = (int)((pt >> 32) & 0xFFFFFFFF);
+            return (x, y);
+        }
+
+        private static DragDropPayload ExtractPayload(object pDataObj)
+        {
+            // IDataObject extraction would go here with CF_HDROP for files,
+            // CF_UNICODETEXT for text, CF_HTML for HTML.
+            // For now, return empty payload — full extraction requires
+            // IDataObject COM interop which will be implemented in the next iteration.
+            return new DragDropPayload();
+        }
+    }
+
+    private void RegisterDropTarget()
+    {
+        if (_parentHwnd == IntPtr.Zero) return;
+        _dropTarget = new DropTargetImpl(this);
+        _ = OleInitialize(IntPtr.Zero);
+        _ = RegisterDragDrop(_parentHwnd, _dropTarget);
+    }
+
+    private void UnregisterDropTarget()
+    {
+        if (_parentHwnd != IntPtr.Zero)
+        {
+            _ = RevokeDragDrop(_parentHwnd);
+        }
+        _dropTarget = null;
+    }
 
     // ==================== IFindInPageAdapter ====================
 

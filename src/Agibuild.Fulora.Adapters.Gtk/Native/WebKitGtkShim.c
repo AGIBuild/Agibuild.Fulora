@@ -79,6 +79,25 @@ typedef bool (*ag_gtk_context_menu_cb)(
     const char* media_source_uri,
     bool is_editable);
 
+typedef void (*ag_gtk_drag_entered_cb)(
+    void* user_data,
+    const char* files_json_utf8,
+    const char* text_utf8,
+    double x, double y);
+
+typedef void (*ag_gtk_drag_updated_cb)(
+    void* user_data,
+    double x, double y);
+
+typedef void (*ag_gtk_drag_exited_cb)(
+    void* user_data);
+
+typedef void (*ag_gtk_drop_performed_cb)(
+    void* user_data,
+    const char* files_json_utf8,
+    const char* text_utf8,
+    double x, double y);
+
 struct ag_gtk_callbacks
 {
     ag_gtk_policy_request_cb on_policy_request;
@@ -124,6 +143,9 @@ typedef struct
     /* Custom scheme registrations — set before attach. */
     char** custom_schemes; /* NULL-terminated array of scheme strings, owned */
     int custom_scheme_count;
+
+    /* Drag-drop state — whether drag is currently over the widget */
+    gboolean drag_inside;
 
 } shim_state;
 
@@ -591,6 +613,106 @@ static gboolean on_context_menu(WebKitWebView* web_view, WebKitContextMenu* cont
     return handled ? TRUE : FALSE;
 }
 
+/* ========== Drag-drop signal handlers ========== */
+
+static gboolean on_drag_motion(GtkWidget* widget, GdkDragContext* context,
+    gint x, gint y, guint time, gpointer user_data)
+{
+    (void)widget;
+    (void)time;
+    shim_state* s = (shim_state*)user_data;
+    if (atomic_load(&s->detached)) return FALSE;
+
+    if (!s->drag_inside)
+    {
+        s->drag_inside = TRUE;
+        if (s->callbacks.on_drag_entered)
+            s->callbacks.on_drag_entered(s->user_data, "[]", NULL, (double)x, (double)y);
+    }
+    else if (s->callbacks.on_drag_updated)
+    {
+        s->callbacks.on_drag_updated(s->user_data, (double)x, (double)y);
+    }
+
+    gdk_drag_status(context, GDK_ACTION_COPY, time);
+    return TRUE;
+}
+
+static void on_drag_leave(GtkWidget* widget, GdkDragContext* context,
+    guint time, gpointer user_data)
+{
+    (void)widget;
+    (void)context;
+    (void)time;
+    shim_state* s = (shim_state*)user_data;
+    if (atomic_load(&s->detached)) return;
+
+    s->drag_inside = FALSE;
+    if (s->callbacks.on_drag_exited)
+        s->callbacks.on_drag_exited(s->user_data);
+}
+
+static void on_drag_data_received(GtkWidget* widget, GdkDragContext* context,
+    gint x, gint y, GtkSelectionData* data, guint info, guint time, gpointer user_data)
+{
+    (void)widget;
+    shim_state* s = (shim_state*)user_data;
+    if (atomic_load(&s->detached))
+    {
+        gtk_drag_finish(context, FALSE, FALSE, time);
+        return;
+    }
+
+    s->drag_inside = FALSE;
+
+    const char* text = NULL;
+    const char* files_json = "[]";
+    char* files_buf = NULL;
+
+    if (info == 0) /* text/uri-list */
+    {
+        gchar** uris = gtk_selection_data_get_uris(data);
+        if (uris)
+        {
+            size_t buf_size = 1024;
+            files_buf = (char*)malloc(buf_size);
+            strcpy(files_buf, "[");
+
+            for (int i = 0; uris[i]; i++)
+            {
+                gchar* path = g_filename_from_uri(uris[i], NULL, NULL);
+                if (path)
+                {
+                    char entry[512];
+                    snprintf(entry, sizeof(entry),
+                        "%s{\"path\":\"%s\"}", i > 0 ? "," : "", path);
+                    if (strlen(files_buf) + strlen(entry) + 2 > buf_size)
+                    {
+                        buf_size *= 2;
+                        files_buf = (char*)realloc(files_buf, buf_size);
+                    }
+                    strcat(files_buf, entry);
+                    g_free(path);
+                }
+            }
+            strcat(files_buf, "]");
+            files_json = files_buf;
+            g_strfreev(uris);
+        }
+    }
+    else /* text/plain or UTF8_STRING */
+    {
+        text = (const char*)gtk_selection_data_get_data(data);
+    }
+
+    if (s->callbacks.on_drop_performed)
+        s->callbacks.on_drop_performed(s->user_data, files_json, text, (double)x, (double)y);
+
+    if (files_buf)
+        free(files_buf);
+    gtk_drag_finish(context, TRUE, FALSE, time);
+}
+
 /* ========== Attach helper ========== */
 
 typedef struct
@@ -683,6 +805,20 @@ static void do_attach(void* data)
     {
         g_signal_connect(s->web_view, "context-menu", G_CALLBACK(on_context_menu), s);
     }
+
+    /* Set up drag-and-drop targets */
+    GtkTargetEntry targets[] = {
+        {"text/uri-list", 0, 0},
+        {"text/plain", 0, 1},
+        {"UTF8_STRING", 0, 2}
+    };
+    gtk_drag_dest_set(GTK_WIDGET(s->web_view),
+        GTK_DEST_DEFAULT_ALL,
+        targets, G_N_ELEMENTS(targets),
+        GDK_ACTION_COPY);
+    g_signal_connect(s->web_view, "drag-data-received", G_CALLBACK(on_drag_data_received), s);
+    g_signal_connect(s->web_view, "drag-motion", G_CALLBACK(on_drag_motion), s);
+    g_signal_connect(s->web_view, "drag-leave", G_CALLBACK(on_drag_leave), s);
 
     /* Add WebView to the plug */
     gtk_container_add(GTK_CONTAINER(s->plug), GTK_WIDGET(s->web_view));
