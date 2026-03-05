@@ -194,6 +194,7 @@ Fulora ships with the following official plugins, each available as a NuGet + np
 | **File System** | `Agibuild.Fulora.Plugin.FileSystem` | `@agibuild/bridge-plugin-file-system` | Sandboxed file read/write/list/delete operations |
 | **Notifications** | `Agibuild.Fulora.Plugin.Notifications` | `@agibuild/bridge-plugin-notifications` | Cross-platform system notifications (toast/banner) |
 | **Auth Token** | `Agibuild.Fulora.Plugin.AuthToken` | `@agibuild/bridge-plugin-auth-token` | Platform-secure token storage (Keychain/CredMgr/Keystore) |
+| **Biometric** | `Agibuild.Fulora.Plugin.Biometric` | `@agibuild/bridge-plugin-biometric` | Biometric authentication (Touch ID, Face ID, Windows Hello) |
 
 Use the CLI to discover and install plugins:
 
@@ -207,3 +208,35 @@ fulora add plugin Agibuild.Fulora.Plugin.Database
 - **Unit tests**: Test the service implementation independently
 - **Contract tests**: Verify `UsePlugin` registers all declared services
 - **Integration tests**: Full round-trip: register plugin → call from JS → verify
+
+## Example: Biometric Authentication Plugin
+
+The `Agibuild.Fulora.Plugin.Biometric` package provides biometric authentication (Touch ID, Face ID, Windows Hello) as a bridge plugin.
+
+### Platform Support
+
+| Platform | Provider | API |
+|----------|----------|-----|
+| macOS | Touch ID | `LocalAuthentication` (LAContext) |
+| Windows | Windows Hello | `UserConsentVerifier` |
+| iOS | Face ID / Touch ID | `LocalAuthentication` |
+| Android | Fingerprint / Face | `BiometricPrompt` |
+| Linux | ❌ Not supported | Returns `platform_not_supported` |
+
+### Usage
+
+```csharp
+webView.Bridge.UsePlugin<BiometricPlugin>();
+```
+
+```typescript
+import type { IBiometricService } from '@agibuild/bridge-plugin-biometric';
+
+const availability = await BiometricService.checkAvailabilityAsync();
+if (availability.isAvailable) {
+  const result = await BiometricService.authenticateAsync('Confirm payment');
+  if (result.success) {
+    // authenticated
+  }
+}
+```

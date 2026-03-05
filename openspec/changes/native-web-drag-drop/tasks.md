@@ -6,16 +6,19 @@
 - [x] 1.2 Define `DragDropPayload`, `FileDropInfo`, `DragDropEffects` types in Core
 - [x] 1.3 Define `DragEventArgs`, `DropEventArgs` event types
 - [x] 1.4 Add `IDragDropAdapter` as optional adapter facet
-- [x] 1.5 CT: `DragDropPayload` construction and property verification
-- [x] 1.6 CT: `DragDropEffects` flags combine correctly
-- [x] 1.7 CT: `FileDropInfo` stores path and optional metadata
-- [x] 1.8 Add `CreateWithDragDrop()` mock adapter variant
+- [x] 1.5 CT: DragDropPayload, FileDropInfo, DragEventArgs tests
+- [x] 1.6 CT: DragDropEffects flags combine correctly
+- [x] 1.7 Add `CreateWithDragDrop()` mock adapter variant
 
 ## 2. WebViewCore Integration
 
-- [ ] 2.1 Add drag-drop event forwarding in `WebViewCore` — subscribe to adapter events
-- [ ] 2.2 Expose `DragEntered`, `DragOver`, `DragLeft`, `DropCompleted` events on `WebViewCore`
-- [ ] 2.3 Wire to `WebView.cs` Avalonia control
+- [x] 2.1 Add drag-drop event forwarding in `WebViewCore` — subscribe to adapter events
+- [x] 2.2 Expose `DragEntered`, `DragOver`, `DragLeft`, `DropCompleted` events on `WebViewCore`
+- [x] 2.3 Wire to `WebView.cs` Avalonia control
+- [x] 2.4 CT: WebViewCore fires DragEntered when adapter raises
+- [x] 2.5 CT: WebViewCore fires DropCompleted when adapter raises
+- [x] 2.6 CT: Drag events fire without subscribers
+- [x] 2.7 CT: WebViewCore without drag adapter does not crash
 
 ## 3. Windows Adapter (Phase 1: IDropTarget)
 
@@ -43,4 +46,4 @@
 - [ ] 6.1 CT: Windows `IDropTarget` mock with file data → payload extraction
 - [ ] 6.2 CT: macOS pasteboard mock → payload extraction
 - [ ] 6.3 CT: Bridge service delivers events to JS handler
-- [ ] 6.4 Manual IT: drag file from Finder/Explorer onto WebView in sample app
+- [ ] 6.4 Manual IT: drag file from Finder/Explorer onto WebView

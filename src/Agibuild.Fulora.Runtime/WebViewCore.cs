@@ -95,6 +95,7 @@ public sealed class WebViewCore : IWebView, IWebViewAdapterHost, IDisposable
     private readonly IPreloadScriptAdapter? _preloadScriptAdapter;
     private readonly IAsyncPreloadScriptAdapter? _asyncPreloadScriptAdapter;
     private readonly IContextMenuAdapter? _contextMenuAdapter;
+    private readonly IDragDropAdapter? _dragDropAdapter;
 
     private bool _webMessageBridgeEnabled;
     private IWebMessagePolicy? _webMessagePolicy;
@@ -217,6 +218,16 @@ public sealed class WebViewCore : IWebView, IWebViewAdapterHost, IDisposable
         }
         _logger.LogDebug("Context menu support: {Supported}", _contextMenuAdapter is not null);
 
+        _dragDropAdapter = _adapter as IDragDropAdapter;
+        if (_dragDropAdapter is not null)
+        {
+            _dragDropAdapter.DragEntered += OnAdapterDragEntered;
+            _dragDropAdapter.DragOver += OnAdapterDragOver;
+            _dragDropAdapter.DragLeft += OnAdapterDragLeft;
+            _dragDropAdapter.DropCompleted += OnAdapterDropCompleted;
+        }
+        _logger.LogDebug("Drag-drop support: {Supported}", _dragDropAdapter is not null);
+
         _adapter.NavigationCompleted += OnAdapterNavigationCompleted;
         _adapter.NewWindowRequested += OnAdapterNewWindowRequested;
         _adapter.WebMessageReceived += OnAdapterWebMessageReceived;
@@ -310,6 +321,14 @@ public sealed class WebViewCore : IWebView, IWebViewAdapterHost, IDisposable
 
         if (_contextMenuAdapter is not null)
             _contextMenuAdapter.ContextMenuRequested -= OnAdapterContextMenuRequested;
+
+        if (_dragDropAdapter is not null)
+        {
+            _dragDropAdapter.DragEntered -= OnAdapterDragEntered;
+            _dragDropAdapter.DragOver -= OnAdapterDragOver;
+            _dragDropAdapter.DragLeft -= OnAdapterDragLeft;
+            _dragDropAdapter.DropCompleted -= OnAdapterDropCompleted;
+        }
 
         if (_activeNavigation is not null)
         {
@@ -758,11 +777,21 @@ public sealed class WebViewCore : IWebView, IWebViewAdapterHost, IDisposable
     /// <summary>Raised when the user triggers a context menu (right-click, long-press).</summary>
     public event EventHandler<ContextMenuRequestedEventArgs>? ContextMenuRequested;
 
+    public event EventHandler<DragEventArgs>? DragEntered;
+    public event EventHandler<DragEventArgs>? DragOver;
+    public event EventHandler<EventArgs>? DragLeft;
+    public event EventHandler<DropEventArgs>? DropCompleted;
+
     private void OnAdapterContextMenuRequested(object? sender, ContextMenuRequestedEventArgs e)
     {
         if (_disposed) return;
         _ = _dispatcher.InvokeAsync(() => ContextMenuRequested?.Invoke(this, e));
     }
+
+    private void OnAdapterDragEntered(object? sender, DragEventArgs e) => DragEntered?.Invoke(this, e);
+    private void OnAdapterDragOver(object? sender, DragEventArgs e) => DragOver?.Invoke(this, e);
+    private void OnAdapterDragLeft(object? sender, EventArgs e) => DragLeft?.Invoke(this, e);
+    private void OnAdapterDropCompleted(object? sender, DropEventArgs e) => DropCompleted?.Invoke(this, e);
 
     /// <summary>
     /// Searches the current page for the given text.

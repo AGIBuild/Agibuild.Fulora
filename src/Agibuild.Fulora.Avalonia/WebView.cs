@@ -68,9 +68,14 @@ public class WebView : NativeControlHost, IWebView
     private bool _adapterUnavailable;
     private ILoggerFactory? _loggerFactory;
     private EventHandler<ContextMenuRequestedEventArgs>? _contextMenuRequestedHandlers;
+    private EventHandler<DragEventArgs>? _dragEnteredHandlers;
+    private EventHandler<DragEventArgs>? _dragOverHandlers;
+    private EventHandler<EventArgs>? _dragLeftHandlers;
+    private EventHandler<DropEventArgs>? _dropCompletedHandlers;
     private Window? _hostWindow;
     private EventHandler<WindowClosingEventArgs>? _hostWindowClosingHandler;
     private WebViewOverlayHost? _overlayHost;
+    private EventHandler? _layoutUpdatedHandler;
 
     // ---------------------------------------------------------------------------
     //  Constructor
@@ -381,6 +386,90 @@ public class WebView : NativeControlHost, IWebView
         }
     }
 
+    /// <summary>Raised when a drag operation enters the WebView bounds.</summary>
+    public event EventHandler<DragEventArgs>? DragEntered
+    {
+        add
+        {
+            _dragEnteredHandlers += value;
+            if (_core is not null)
+            {
+                _core.DragEntered += value;
+            }
+        }
+        remove
+        {
+            _dragEnteredHandlers -= value;
+            if (_core is not null)
+            {
+                _core.DragEntered -= value;
+            }
+        }
+    }
+
+    /// <summary>Raised when a drag operation moves over the WebView.</summary>
+    public event EventHandler<DragEventArgs>? DragOver
+    {
+        add
+        {
+            _dragOverHandlers += value;
+            if (_core is not null)
+            {
+                _core.DragOver += value;
+            }
+        }
+        remove
+        {
+            _dragOverHandlers -= value;
+            if (_core is not null)
+            {
+                _core.DragOver -= value;
+            }
+        }
+    }
+
+    /// <summary>Raised when a drag operation leaves the WebView bounds.</summary>
+    public event EventHandler<EventArgs>? DragLeft
+    {
+        add
+        {
+            _dragLeftHandlers += value;
+            if (_core is not null)
+            {
+                _core.DragLeft += value;
+            }
+        }
+        remove
+        {
+            _dragLeftHandlers -= value;
+            if (_core is not null)
+            {
+                _core.DragLeft -= value;
+            }
+        }
+    }
+
+    /// <summary>Raised when a drop operation completes on the WebView.</summary>
+    public event EventHandler<DropEventArgs>? DropCompleted
+    {
+        add
+        {
+            _dropCompletedHandlers += value;
+            if (_core is not null)
+            {
+                _core.DropCompleted += value;
+            }
+        }
+        remove
+        {
+            _dropCompletedHandlers -= value;
+            if (_core is not null)
+            {
+                _core.DropCompleted -= value;
+            }
+        }
+    }
+
     /// <summary>
     /// Returns the underlying platform WebView handle, or <c>null</c> if not available.
     /// </summary>
@@ -514,6 +603,7 @@ public class WebView : NativeControlHost, IWebView
     {
         base.OnAttachedToVisualTree(e);
         HookHostWindowClosing();
+        SubscribeLayoutOverlayEvents();
     }
 
     /// <summary>
@@ -521,6 +611,7 @@ public class WebView : NativeControlHost, IWebView
     /// </summary>
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
+        UnsubscribeLayoutOverlayEvents();
         UnhookHostWindowClosing();
         base.OnDetachedFromVisualTree(e);
     }
@@ -700,6 +791,22 @@ public class WebView : NativeControlHost, IWebView
         {
             _core.ContextMenuRequested += _contextMenuRequestedHandlers;
         }
+        if (_dragEnteredHandlers is not null)
+        {
+            _core.DragEntered += _dragEnteredHandlers;
+        }
+        if (_dragOverHandlers is not null)
+        {
+            _core.DragOver += _dragOverHandlers;
+        }
+        if (_dragLeftHandlers is not null)
+        {
+            _core.DragLeft += _dragLeftHandlers;
+        }
+        if (_dropCompletedHandlers is not null)
+        {
+            _core.DropCompleted += _dropCompletedHandlers;
+        }
 
         // Apply initial zoom if set via XAML before core existed
         var zoom = ZoomFactor;
@@ -725,6 +832,22 @@ public class WebView : NativeControlHost, IWebView
         if (_contextMenuRequestedHandlers is not null)
         {
             _core.ContextMenuRequested -= _contextMenuRequestedHandlers;
+        }
+        if (_dragEnteredHandlers is not null)
+        {
+            _core.DragEntered -= _dragEnteredHandlers;
+        }
+        if (_dragOverHandlers is not null)
+        {
+            _core.DragOver -= _dragOverHandlers;
+        }
+        if (_dragLeftHandlers is not null)
+        {
+            _core.DragLeft -= _dragLeftHandlers;
+        }
+        if (_dropCompletedHandlers is not null)
+        {
+            _core.DropCompleted -= _dropCompletedHandlers;
         }
     }
 
@@ -852,6 +975,39 @@ public class WebView : NativeControlHost, IWebView
 
         _hostWindow = null;
         _hostWindowClosingHandler = null;
+    }
+
+    private void SubscribeLayoutOverlayEvents()
+    {
+        if (_layoutUpdatedHandler is not null)
+            return;
+
+        _layoutUpdatedHandler = OnLayoutUpdatedForOverlay;
+        LayoutUpdated += _layoutUpdatedHandler;
+    }
+
+    private void UnsubscribeLayoutOverlayEvents()
+    {
+        if (_layoutUpdatedHandler is not null)
+        {
+            LayoutUpdated -= _layoutUpdatedHandler;
+            _layoutUpdatedHandler = null;
+        }
+    }
+
+    private void OnLayoutUpdatedForOverlay(object? sender, EventArgs e)
+    {
+        if (_overlayHost is null)
+            return;
+
+        var topLevel = VisualRoot as TopLevel;
+        var screenOffset = topLevel is not null
+            ? (this.TranslatePoint(new Point(0, 0), topLevel) ?? default)
+            : default;
+        var dpiScale = topLevel?.RenderScaling ?? 1.0;
+
+        _overlayHost.UpdatePosition(Bounds, screenOffset, dpiScale);
+        _overlayHost.SyncVisibilityWith(IsVisible);
     }
 
     private sealed class AvaloniaNativeHandleAdapter : INativeHandle

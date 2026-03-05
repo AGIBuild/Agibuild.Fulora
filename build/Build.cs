@@ -63,6 +63,18 @@ partial class BuildTask : NukeBuild
     [Parameter("Optional warning scanner input file path. If set, scanner consumes this file instead of live build output.")]
     readonly string? WarningGovernanceInput = null;
 
+    [Parameter("Project to package (path to .csproj)")]
+    readonly string? PackageProject = null;
+
+    [Parameter("Target runtime identifier (e.g., win-x64, osx-arm64)")]
+    readonly string? PackageRuntime = null;
+
+    [Parameter("Application version for packaging")]
+    readonly string? PackageAppVersion = null;
+
+    [Parameter("Output directory for packaged app")]
+    readonly string? PackageOutput = null;
+
     static string ResolveAndroidSdkRoot()
     {
         var home = Environment.GetEnvironmentVariable("ANDROID_HOME");

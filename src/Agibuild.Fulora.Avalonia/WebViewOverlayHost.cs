@@ -11,6 +11,8 @@ public sealed class WebViewOverlayHost : IDisposable
     private readonly WebView _owner;
     private bool _isVisible;
     private bool _disposed;
+    private Rect _bounds;
+    private double _dpiScale;
 
     internal WebViewOverlayHost(WebView owner)
     {
@@ -28,13 +30,38 @@ public sealed class WebViewOverlayHost : IDisposable
     public bool IsVisible => _isVisible;
 
     /// <summary>
+    /// DPI-adjusted bounds of the overlay.
+    /// </summary>
+    public Rect Bounds => _bounds;
+
+    /// <summary>
+    /// Current DPI scale factor applied to bounds.
+    /// </summary>
+    public double DpiScale => _dpiScale;
+
+    /// <summary>
     /// Updates the overlay position to match WebView bounds.
     /// </summary>
     internal void UpdatePosition(Rect webViewBounds, Point screenOffset, double dpiScale)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        // Position sync - placeholder for platform-specific overlay positioning.
-        // Actual implementation will be provided by platform adapters.
+        _bounds = new Rect(
+            screenOffset.X + webViewBounds.X * dpiScale,
+            screenOffset.Y + webViewBounds.Y * dpiScale,
+            webViewBounds.Width * dpiScale,
+            webViewBounds.Height * dpiScale);
+        _dpiScale = dpiScale;
+    }
+
+    /// <summary>
+    /// Syncs overlay visibility with the WebView visibility.
+    /// </summary>
+    public void SyncVisibilityWith(bool isVisible)
+    {
+        if (isVisible && Content is not null)
+            Show();
+        else
+            Hide();
     }
 
     internal void Show()

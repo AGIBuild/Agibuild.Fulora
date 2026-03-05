@@ -104,6 +104,19 @@ public class BiometricPluginTests
         Assert.Equal("Provider threw", result.ErrorMessage);
     }
 
+    [Fact]
+    public async Task LinuxBiometricProvider_returns_not_supported()
+    {
+        var provider = new LinuxBiometricProvider();
+        var availability = await provider.CheckAvailabilityAsync(TestContext.Current.CancellationToken);
+        Assert.False(availability.IsAvailable);
+        Assert.Equal("platform_not_supported", availability.ErrorReason);
+
+        var result = await provider.AuthenticateAsync("test", TestContext.Current.CancellationToken);
+        Assert.False(result.Success);
+        Assert.Equal("not_available", result.ErrorCode);
+    }
+
     private sealed class ThrowingBiometricProvider : IBiometricPlatformProvider
     {
         public Task<BiometricAvailability> CheckAvailabilityAsync(CancellationToken ct = default) =>

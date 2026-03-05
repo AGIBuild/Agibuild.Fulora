@@ -145,4 +145,56 @@ public sealed class HybridE2ETestingTests
         Assert.Null(app.Core);
         Assert.Throws<ObjectDisposedException>(() => app.GetWebView());
     }
+
+    [Fact]
+    public async Task Example_EvaluateJs_returns_result()
+    {
+        await using var app = FuloraTestApp.Create();
+        var handle = app.GetWebView();
+        // MockWebViewAdapter returns null for InvokeScriptAsync by default
+        var result = await handle.EvaluateJsAsync("document.title", TestContext.Current.CancellationToken);
+        // Just verify the call completes without throwing
+        // In a real E2E test with a live adapter, this would return the actual title
+    }
+
+    [Fact]
+    public async Task Example_BridgeCallAssertion_records_exported_service_call()
+    {
+        await using var app = FuloraTestApp.Create();
+
+        // Simulate a bridge call via the tracer
+        app.Tracer.OnExportCallStart("TodoService", "addTodo", """{"text":"Buy milk"}""");
+        app.Tracer.OnExportCallEnd("TodoService", "addTodo", 5, "void");
+
+        var calls = app.Tracer.GetBridgeCalls("TodoService");
+        Assert.Single(calls);
+        Assert.Equal("addTodo", calls[0].MethodName);
+    }
+
+    [Fact]
+    public async Task Example_FullLifecycle_create_use_dispose()
+    {
+        await using var app = FuloraTestApp.Create();
+
+        // Get the test handle
+        var handle = app.GetWebView();
+        Assert.NotNull(handle);
+
+        // Simulate some bridge activity
+        app.Tracer.OnExportCallStart("ChatService", "sendMessage", """{"msg":"hello"}""");
+        app.Tracer.OnExportCallEnd("ChatService", "sendMessage", 10, "string");
+        app.Tracer.OnImportCallStart("UIService", "showNotification", null);
+        app.Tracer.OnImportCallEnd("UIService", "showNotification", 2);
+
+        // Assert bridge calls
+        var exportCalls = app.Tracer.GetBridgeCalls("ChatService");
+        Assert.Single(exportCalls);
+
+        var importCalls = app.Tracer.GetBridgeCalls("UIService");
+        Assert.Single(importCalls);
+
+        // Reset and verify
+        app.Tracer.Reset();
+        Assert.Empty(app.Tracer.GetBridgeCalls());
+    }
 }

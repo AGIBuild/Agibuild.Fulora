@@ -26,6 +26,37 @@ partial class BuildTask
 
     // ──────────────────────────── Pack / Validate / Publish Targets ────────────────────────────
 
+    Target PackageApp => _ => _
+        .Description("Publishes an application for a specific runtime (self-contained). Optional; not part of CI.")
+        .DependsOn(Build)
+        .Requires(() => PackageProject, () => PackageRuntime, () => PackageOutput)
+        .Executes(() =>
+        {
+            var project = (AbsolutePath)PackageProject!;
+            var runtime = PackageRuntime!;
+            var output = (AbsolutePath)PackageOutput!;
+            output.CreateDirectory();
+
+            DotNetPublish(s =>
+            {
+                var settings = s
+                    .SetProject(project)
+                    .SetConfiguration(Configuration)
+                    .SetRuntime(runtime)
+                    .SetOutput(output)
+                    .EnableNoRestore()
+                    .EnableNoBuild()
+                    .SetProperty("PublishSelfContained", "true");
+
+                if (!string.IsNullOrEmpty(PackageAppVersion))
+                    settings = settings.SetProperty("Version", PackageAppVersion);
+
+                return settings;
+            });
+
+            Serilog.Log.Information("PackageApp output: {Output}", output);
+        });
+
     Target Pack => _ => _
         .Description("Creates all NuGet packages: main library and sub-packages (Core, Bridge.Generator, etc.).")
         .DependsOn(Build)

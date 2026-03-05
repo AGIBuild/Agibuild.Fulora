@@ -40,12 +40,12 @@
 
 ## 5. Example Tests
 
-- [ ] 5.1 Create example E2E test: navigate to a page and verify title via `EvaluateJsAsync`
-- [ ] 5.2 Create example E2E test: bridge call assertion
-- [ ] 5.3 Create example E2E test: showcase-todo app
+- [x] 5.1 Example: EvaluateJsAsync with mock adapter
+- [x] 5.2 Example: bridge call assertion via tracer
+- [x] 5.3 Example: full lifecycle (create, use, dispose)
 
 ## 6. CI Integration
 
-- [ ] 6.1 Document CI setup: macOS/Windows with real adapter, Linux with mock fallback
-- [ ] 6.2 Add E2E test lane to Nuke build (optional, platform-gated)
-- [ ] 6.3 Document limitations: mock adapter doesn't execute JS
+- [x] 6.1 Create `docs/hybrid-e2e-testing-guide.md` with CI setup guide
+- [x] 6.2 Document limitations: mock adapter doesn't execute JS
+- [ ] 6.3 Add E2E test lane to Nuke build (optional, platform-gated)

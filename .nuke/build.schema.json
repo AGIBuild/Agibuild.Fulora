@@ -42,6 +42,7 @@
         "NugetPackageTest",
         "OpenSpecStrictGovernance",
         "Pack",
+        "PackageApp",
         "PackTemplate",
         "Publish",
         "PublishTemplate",
@@ -177,6 +178,22 @@
         "NuGetSource": {
           "type": "string",
           "description": "NuGet source URL for publish. Default: https://api.nuget.org/v3/index.json"
+        },
+        "PackageAppVersion": {
+          "type": "string",
+          "description": "Application version for packaging"
+        },
+        "PackageOutput": {
+          "type": "string",
+          "description": "Output directory for packaged app"
+        },
+        "PackageProject": {
+          "type": "string",
+          "description": "Project to package (path to .csproj)"
+        },
+        "PackageRuntime": {
+          "type": "string",
+          "description": "Target runtime identifier (e.g., win-x64, osx-arm64)"
         },
         "PackageVersion": {
           "type": "string",
