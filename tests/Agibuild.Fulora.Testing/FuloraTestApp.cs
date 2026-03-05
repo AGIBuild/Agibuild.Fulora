@@ -9,6 +9,7 @@ namespace Agibuild.Fulora.Testing;
 public sealed class FuloraTestApp : IAsyncDisposable
 {
     private WebViewCore? _core;
+    private MockWebViewAdapter? _adapter;
     private readonly BridgeTestTracer _tracer = new();
     private readonly TestDispatcher _dispatcher = new();
 
@@ -20,9 +21,18 @@ public sealed class FuloraTestApp : IAsyncDisposable
     /// Creates a configured test app with WebViewCore, MockWebViewAdapter, TestDispatcher, and BridgeTestTracer.
     /// </summary>
     public static FuloraTestApp Create()
+        => CreateInternal(MockWebViewAdapter.Create());
+
+    /// <summary>
+    /// Creates a configured test app with drag-drop support.
+    /// The underlying adapter implements <see cref="Agibuild.Fulora.Adapters.Abstractions.IDragDropAdapter"/>.
+    /// </summary>
+    public static FuloraTestApp CreateWithDragDrop()
+        => CreateInternal(MockWebViewAdapter.CreateWithDragDrop());
+
+    private static FuloraTestApp CreateInternal(MockWebViewAdapter adapter)
     {
         var app = new FuloraTestApp();
-        var adapter = MockWebViewAdapter.Create();
         adapter.AutoCompleteNavigation = true;
 
         var core = new WebViewCore(adapter, app._dispatcher);
@@ -33,6 +43,7 @@ public sealed class FuloraTestApp : IAsyncDisposable
         });
 
         app._core = core;
+        app._adapter = adapter;
         return app;
     }
 
@@ -62,6 +73,12 @@ public sealed class FuloraTestApp : IAsyncDisposable
     /// The underlying WebViewCore (for advanced scenarios).
     /// </summary>
     public WebViewCore? Core => _core;
+
+    /// <summary>
+    /// The underlying mock adapter (for simulating native events).
+    /// Cast to specific mock type (e.g., <see cref="MockWebViewAdapterWithDragDrop"/>) for event simulation.
+    /// </summary>
+    internal MockWebViewAdapter? Adapter => _adapter;
 
     /// <inheritdoc />
     public ValueTask DisposeAsync()
