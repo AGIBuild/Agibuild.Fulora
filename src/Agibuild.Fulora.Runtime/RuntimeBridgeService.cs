@@ -81,10 +81,12 @@ internal sealed class RuntimeBridgeService : IBridgeService, IDisposable
 
                 generated.RegisterHandlers(targetRpc, implementation);
 
-                _ = _invokeScript(generated.GetJsStub());
+                var jsStub = generated.GetJsStub();
+                _ = _invokeScript(jsStub);
                 _exportedServices[interfaceType] = new ExposedService(
                     generated.ServiceName,
                     generated.MethodNames.ToList(),
+                    jsStub,
                     generated.UnregisterHandlers,
                     () => generated.DisconnectEvents(implementation));
 
@@ -136,7 +138,7 @@ internal sealed class RuntimeBridgeService : IBridgeService, IDisposable
             var jsStub = GenerateJsStub(serviceName, interfaceType);
             _ = _invokeScript(jsStub);
 
-            _exportedServices[interfaceType] = new ExposedService(serviceName, registeredMethods);
+            _exportedServices[interfaceType] = new ExposedService(serviceName, registeredMethods, jsStub);
 
             _tracer.OnServiceExposed(serviceName, registeredMethods.Count, isSourceGenerated: false);
             _logger.LogDebug("Bridge: exposed {Service} with {Count} methods (reflection)",
@@ -559,9 +561,25 @@ internal sealed class RuntimeBridgeService : IBridgeService, IDisposable
         };
     }
 
+    // ==================== Reinject on navigation ====================
+
+    /// <summary>
+    /// Re-invokes the cached JS stub for every currently-exposed service.
+    /// Called after page reload / navigation to restore <c>window.agWebView.bridge.*</c>.
+    /// </summary>
+    internal void ReinjectServiceStubs()
+    {
+        foreach (var kvp in _exportedServices)
+        {
+            var svc = kvp.Value;
+            _ = _invokeScript(svc.JsStub);
+            _logger.LogDebug("Bridge: re-injected JS stub for {Service}", svc.ServiceName);
+        }
+    }
+
     // ==================== Inner types ====================
 
-    private sealed record ExposedService(string ServiceName, List<string> RegisteredMethods, Action<IWebViewRpcService>? GeneratedUnregister = null, Action? GeneratedDisconnectEvents = null);
+    private sealed record ExposedService(string ServiceName, List<string> RegisteredMethods, string JsStub, Action<IWebViewRpcService>? GeneratedUnregister = null, Action? GeneratedDisconnectEvents = null);
 
     /// <summary>
     /// Built-in middleware that enforces sliding-window rate limiting.
@@ -656,6 +674,9 @@ internal sealed class RuntimeBridgeService : IBridgeService, IDisposable
             var methodName = ExtractMethodName(method);
             _inner.Handle(method, WrapWithTracing(asyncHandler, _tracer, _serviceName, methodName));
         }
+
+        public void RegisterEnumerator(string token, Func<Task<(object? Value, bool Finished)>> moveNext, Func<Task> dispose)
+            => _inner.RegisterEnumerator(token, moveNext, dispose);
 
         public void RemoveHandler(string method) => _inner.RemoveHandler(method);
 
@@ -797,6 +818,9 @@ internal sealed class RuntimeBridgeService : IBridgeService, IDisposable
             var methodName = ExtractMethodName(method);
             _inner.Handle(method, WrapWithMiddleware(asyncHandler, _middlewares, _serviceName, methodName));
         }
+
+        public void RegisterEnumerator(string token, Func<Task<(object? Value, bool Finished)>> moveNext, Func<Task> dispose)
+            => _inner.RegisterEnumerator(token, moveNext, dispose);
 
         public void RemoveHandler(string method) => _inner.RemoveHandler(method);
         public Task<JsonElement> InvokeAsync(string method, object? args = null) => _inner.InvokeAsync(method, args);

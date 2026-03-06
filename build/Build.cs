@@ -197,9 +197,19 @@ partial class BuildTask : NukeBuild
     AbsolutePath ReactWebDirectory => ReactSampleDirectory / "AvaloniReact.Web";
     AbsolutePath ReactDesktopProject => ReactSampleDirectory / "AvaloniReact.Desktop" / "AvaloniReact.Desktop.csproj";
 
+    AbsolutePath AiChatSampleDirectory => RootDirectory / "samples" / "avalonia-ai-chat";
+    AbsolutePath AiChatWebDirectory => AiChatSampleDirectory / "AvaloniAiChat.Web";
+    AbsolutePath AiChatDesktopProject => AiChatSampleDirectory / "AvaloniAiChat.Desktop" / "AvaloniAiChat.Desktop.csproj";
+
     AbsolutePath VueSampleDirectory => RootDirectory / "samples" / "avalonia-vue";
     AbsolutePath VueWebDirectory => VueSampleDirectory / "AvaloniVue.Web";
     AbsolutePath VueDesktopProject => VueSampleDirectory / "AvaloniVue.Desktop" / "AvaloniVue.Desktop.csproj";
+
+    AbsolutePath TodoSampleDirectory => RootDirectory / "samples" / "showcase-todo";
+    AbsolutePath TodoWebDirectory => TodoSampleDirectory / "ShowcaseTodo.Web";
+    AbsolutePath TodoDesktopProject => TodoSampleDirectory / "ShowcaseTodo.Desktop" / "ShowcaseTodo.Desktop.csproj";
+
+    AbsolutePath MinimalHybridDesktopProject => RootDirectory / "samples" / "minimal-hybrid" / "MinimalHybrid.Desktop" / "MinimalHybrid.Desktop.csproj";
 
     // ──────────────────────────────── Core Lifecycle ────────────────────────────────────
 

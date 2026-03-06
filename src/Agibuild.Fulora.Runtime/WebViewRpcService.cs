@@ -94,7 +94,7 @@ internal sealed class WebViewRpcService : IWebViewRpcService
 
     internal static readonly TimeSpan EnumeratorInactivityTimeout = TimeSpan.FromSeconds(30);
 
-    internal void RegisterEnumerator(string token, Func<Task<(object? Value, bool Finished)>> moveNext, Func<Task> dispose)
+    public void RegisterEnumerator(string token, Func<Task<(object? Value, bool Finished)>> moveNext, Func<Task> dispose)
     {
         var enumerator = new ActiveEnumerator(moveNext, dispose);
         _activeEnumerators[token] = enumerator;

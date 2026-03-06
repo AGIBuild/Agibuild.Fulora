@@ -967,6 +967,21 @@ public sealed class WebViewCore : IWebView, IWebViewAdapterHost, IDisposable
         _logger.LogDebug("WebMessageBridge disabled");
     }
 
+    /// <summary>
+    /// Re-injects the base RPC JS stub and all exposed service stubs when the bridge is enabled.
+    /// Called after successful navigation to restore <c>window.agWebView</c> in the new JS context.
+    /// </summary>
+    internal void ReinjectBridgeStubsIfEnabled()
+    {
+        if (!_webMessageBridgeEnabled)
+            return;
+
+        ObserveBackgroundTask(InvokeScriptAsync(WebViewRpcService.JsStub), "ReinjectBridgeStubs.RpcStub");
+        _bridgeService?.ReinjectServiceStubs();
+
+        _logger.LogDebug("Bridge: re-injected JS stubs after navigation");
+    }
+
     // ==================== SPA Hosting ====================
 
     /// <summary>
@@ -1486,6 +1501,9 @@ public sealed class WebViewCore : IWebView, IWebViewAdapterHost, IDisposable
         }
         else
         {
+            if (status == NavigationCompletedStatus.Success)
+                ReinjectBridgeStubsIfEnabled();
+
             operation.TrySetSuccess();
         }
     }

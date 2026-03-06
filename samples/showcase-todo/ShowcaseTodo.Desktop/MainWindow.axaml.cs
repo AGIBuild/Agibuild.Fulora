@@ -11,12 +11,14 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
+        WebView.EnvironmentOptions = new WebViewEnvironmentOptions { EnableDevTools = true };
+
         Loaded += async (_, _) =>
         {
             try
             {
 #if DEBUG
-                await WebView.NavigateAsync(new Uri("http://localhost:5174"));
+                await WebView.NavigateAsync(new Uri("http://localhost:5176"));
 #else
                 WebView.EnableSpaHosting(new SpaHostingOptions
                 {

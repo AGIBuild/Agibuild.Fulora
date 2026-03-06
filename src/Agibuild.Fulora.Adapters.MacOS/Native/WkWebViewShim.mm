@@ -684,6 +684,23 @@ static int map_error_status(NSError* error)
     return json ? [[NSString alloc] initWithData:json encoding:NSUTF8StringEncoding] : @"[]";
 }
 
+// Ensure the native WKWebView context menu (including "Inspect Element" when inspectable)
+// is not suppressed by the hosting view hierarchy.
+- (void)willOpenMenu:(NSMenu*)menu withEvent:(NSEvent*)event
+{
+    [super willOpenMenu:menu withEvent:event];
+}
+
+- (BOOL)acceptsFirstResponder
+{
+    return YES;
+}
+
+- (void)rightMouseDown:(NSEvent*)event
+{
+    [super rightMouseDown:event];
+}
+
 @end
 
 extern "C" {

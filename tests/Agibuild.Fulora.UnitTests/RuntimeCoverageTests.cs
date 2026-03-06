@@ -1534,6 +1534,8 @@ public sealed class RuntimeCoverageTests
         {
             _handlers.Remove(method);
         }
+
+        public void RegisterEnumerator(string token, Func<Task<(object? Value, bool Finished)>> moveNext, Func<Task> dispose) { }
     }
 
     // ==================== Mock DevTools adapter ====================

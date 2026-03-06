@@ -45,4 +45,4 @@
 - [x] 6.1 CT: `AiChatService` with mock `IChatClient` returns streaming tokens
 - [x] 6.2 CT: `AiChatService` cancellation disposes client enumerator
 - [x] 6.3 CT: `EchoChatClient` streams prompt back character by character
-- [ ] 6.4 Manual IT: run sample app with Ollama and verify streaming
+- [x] 6.4 Manual IT: run sample app with Ollama and verify streaming

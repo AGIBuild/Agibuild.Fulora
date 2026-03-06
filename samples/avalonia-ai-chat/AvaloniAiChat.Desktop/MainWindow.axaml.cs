@@ -12,12 +12,14 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
+        WebView.EnvironmentOptions = new WebViewEnvironmentOptions { EnableDevTools = true };
+
         Loaded += async (_, _) =>
         {
             try
             {
 #if DEBUG
-                await WebView.NavigateAsync(new Uri("http://localhost:5173"));
+                await WebView.NavigateAsync(new Uri("http://localhost:5175"));
 #else
                 WebView.EnableSpaHosting(new SpaHostingOptions
                 {
@@ -43,23 +45,40 @@ public partial class MainWindow : Window
             }
 
             var (chatClient, backendName) = CreateChatClient();
-            WebView.Bridge.Expose<IAiChatService>(new AiChatService(chatClient, backendName));
+            var chatService = new AiChatService(chatClient, backendName);
+            WebView.Bridge.Expose<IAiChatService>(chatService);
+
+            WebView.DropCompleted += (_, e) =>
+            {
+                var file = e.Payload.Files?.FirstOrDefault();
+                if (file is not null)
+                    chatService.SetDroppedFile(file.Path);
+            };
         };
     }
 
     private static (IChatClient Client, string Name) CreateChatClient()
     {
-        var provider = Environment.GetEnvironmentVariable("AI__PROVIDER")?.ToLowerInvariant();
-        var model = Environment.GetEnvironmentVariable("AI__MODEL") ?? "llama3.2";
+        var endpoint = new Uri(Environment.GetEnvironmentVariable("AI__ENDPOINT") ?? "http://localhost:11434");
+        var model = Environment.GetEnvironmentVariable("AI__MODEL");
 
-        return provider switch
+        // Auto-detect: if Ollama is running, use it; otherwise fall back to Echo.
+        if (model is null)
         {
-            "ollama" => (
-                new OllamaChatClient(
-                    new Uri(Environment.GetEnvironmentVariable("AI__ENDPOINT") ?? "http://localhost:11434"),
-                    model),
-                $"Ollama ({model})"),
-            _ => (new EchoChatClient(), "Echo (demo mode)"),
-        };
+            try
+            {
+                using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(3) };
+                var json = http.GetStringAsync($"{endpoint}api/tags").GetAwaiter().GetResult();
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("models", out var models) && models.GetArrayLength() > 0)
+                    model = models[0].GetProperty("name").GetString();
+            }
+            catch { /* Ollama not available */ }
+        }
+
+        if (model is not null)
+            return (new OllamaChatClient(endpoint, model), $"Ollama ({model})");
+
+        return (new EchoChatClient(), "Echo (demo mode)");
     }
 }

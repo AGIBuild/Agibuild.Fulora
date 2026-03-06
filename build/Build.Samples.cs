@@ -132,22 +132,6 @@ partial class BuildTask
         throw new TimeoutException($"{url} did not become available within {timeoutSeconds}s.");
     }
 
-    void StartDevServer(AbsolutePath webDirectory, int port)
-    {
-        EnsureSampleWebDepsInstalled(webDirectory);
-
-        Serilog.Log.Information("Starting Vite dev server on http://localhost:{Port} ...", port);
-        var process = new Process
-        {
-            StartInfo = CreateNpmProcessStartInfo("run dev", webDirectory, redirectStdout: false, redirectStderr: false)
-        };
-        process.Start();
-        process.WaitForExit();
-
-        if (process.ExitCode != 0)
-            Serilog.Log.Warning("Vite dev server exited with code {Code}.", process.ExitCode);
-    }
-
     void StartDesktopApp(AbsolutePath desktopProject, AbsolutePath webDirectory, int devPort)
     {
         Assert.FileExists(desktopProject, $"Desktop project not found at {desktopProject}.");
@@ -195,23 +179,32 @@ partial class BuildTask
         }
     }
 
-    // ──────────────────────────── React Sample Targets ────────────────────────────
+    // ──────────────────────────── Sample App Targets ────────────────────────────
 
-    Target StartReactDev => _ => _
-        .Description("Starts the React Vite dev server for the AvaloniReact sample (standalone, foreground).")
-        .Executes(() => StartDevServer(ReactWebDirectory, port: 5173));
+    Target StartAiChatApp => _ => _
+        .Description("Launches the AI Chat sample. Auto-detects Ollama at localhost:11434; falls back to Echo mode.")
+        .Executes(() => StartDesktopApp(AiChatDesktopProject, AiChatWebDirectory, devPort: 5175));
 
     Target StartReactApp => _ => _
-        .Description("Launches the AvaloniReact desktop sample. In Debug: auto-starts Vite dev server if needed.")
+        .Description("Launches the React sample. In Debug: auto-starts Vite dev server if needed.")
         .Executes(() => StartDesktopApp(ReactDesktopProject, ReactWebDirectory, devPort: 5173));
 
-    // ──────────────────────────── Vue Sample Targets ──────────────────────────────
-
-    Target StartVueDev => _ => _
-        .Description("Starts the Vue Vite dev server for the AvaloniVue sample (standalone, foreground).")
-        .Executes(() => StartDevServer(VueWebDirectory, port: 5174));
-
     Target StartVueApp => _ => _
-        .Description("Launches the AvaloniVue desktop sample. In Debug: auto-starts Vite dev server if needed.")
+        .Description("Launches the Vue sample. In Debug: auto-starts Vite dev server if needed.")
         .Executes(() => StartDesktopApp(VueDesktopProject, VueWebDirectory, devPort: 5174));
+
+    Target StartTodoApp => _ => _
+        .Description("Launches the Showcase Todo sample. In Debug: auto-starts Vite dev server if needed.")
+        .Executes(() => StartDesktopApp(TodoDesktopProject, TodoWebDirectory, devPort: 5176));
+
+    Target StartMinimalApp => _ => _
+        .Description("Launches the Minimal Hybrid sample (static wwwroot, no Vite).")
+        .Executes(() =>
+        {
+            Assert.FileExists(MinimalHybridDesktopProject, $"Desktop project not found at {MinimalHybridDesktopProject}.");
+            DotNetRun(s => s
+                .SetProjectFile(MinimalHybridDesktopProject)
+                .SetConfiguration(Configuration));
+        });
+
 }

@@ -32,6 +32,29 @@ public class FakeStreamingService : IStreamingService
     public Task<int> GetCount() => Task.FromResult(42);
 }
 
+// ==================== Service with CancellationToken (regression for CTS lifetime bug) ====================
+
+[JsExport]
+public interface ICancellableStreamingService
+{
+    IAsyncEnumerable<string> StreamTokens(string text, CancellationToken cancellationToken = default);
+}
+
+public class FakeCancellableStreamingService : ICancellableStreamingService
+{
+    public async IAsyncEnumerable<string> StreamTokens(
+        string text,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        foreach (var ch in text)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            yield return ch.ToString();
+            await Task.Delay(30, cancellationToken);
+        }
+    }
+}
+
 // ==================== Tests ====================
 
 public sealed class BridgeStreamingTests
@@ -47,6 +70,21 @@ public sealed class BridgeStreamingTests
             AllowedOrigins = new HashSet<string> { "*" }
         });
         return (core, adapter);
+    }
+
+    /// <summary>
+    /// Extracts the enumerator token from an _onResponse script.
+    /// System.Text.Json encodes " as \u0022, so a naive hex regex would
+    /// capture 4 extra digits from the escape prefix. Parse JSON instead.
+    /// </summary>
+    private static string ExtractToken(string script)
+    {
+        const string prefix = "_onResponse(";
+        var idx = script.IndexOf(prefix, StringComparison.Ordinal);
+        var payload = script[(idx + prefix.Length)..^1];
+        var json = JsonSerializer.Deserialize<string>(payload)!;
+        using var doc = JsonDocument.Parse(json);
+        return doc.RootElement.GetProperty("result").GetProperty("token").GetString()!;
     }
 
     [Fact]
@@ -152,20 +190,18 @@ public sealed class BridgeStreamingTests
     {
         var (core, adapter) = CreateCoreWithRpc();
         var capturedScripts = new List<string>();
-        adapter.ScriptCallback = script => { capturedScripts.Add(script); return null; };
+        adapter.ScriptCallback = script => { lock (capturedScripts) capturedScripts.Add(script); return null; };
 
         core.Bridge.Expose<IStreamingService>(new FakeStreamingService());
-        capturedScripts.Clear();
+        lock (capturedScripts) capturedScripts.Clear();
 
         adapter.RaiseWebMessage(
             """{"jsonrpc":"2.0","id":"stream-1","method":"StreamingService.streamMessages","params":{"topic":"test"}}""",
             "*", core.ChannelId);
+        DrainDispatcher(500);
 
-        _dispatcher.RunAll();
-        Thread.Sleep(100);
-        _dispatcher.RunAll();
-
-        var response = capturedScripts.FirstOrDefault(s => s.Contains("_onResponse") && s.Contains("token"));
+        string? response;
+        lock (capturedScripts) response = capturedScripts.FirstOrDefault(s => s.Contains("_onResponse") && s.Contains("token"));
         Assert.NotNull(response);
         Assert.Contains("token", response);
     }
@@ -175,30 +211,26 @@ public sealed class BridgeStreamingTests
     {
         var (core, adapter) = CreateCoreWithRpc();
         var capturedScripts = new List<string>();
-        adapter.ScriptCallback = script => { capturedScripts.Add(script); return null; };
+        adapter.ScriptCallback = script => { lock (capturedScripts) capturedScripts.Add(script); return null; };
 
         core.Bridge.Expose<IStreamingService>(new FakeStreamingService());
-        capturedScripts.Clear();
+        lock (capturedScripts) capturedScripts.Clear();
 
-        // Start streaming
         adapter.RaiseWebMessage(
             """{"jsonrpc":"2.0","id":"stream-abort","method":"StreamingService.streamMessages","params":{"topic":"test"}}""",
             "*", core.ChannelId);
-        _dispatcher.RunAll();
-        Thread.Sleep(100);
-        _dispatcher.RunAll();
+        DrainDispatcher(500);
 
-        // Extract token from response
-        var response = capturedScripts.FirstOrDefault(s => s.Contains("token"));
+        string? response;
+        lock (capturedScripts) response = capturedScripts.FirstOrDefault(s => s.Contains("token"));
         Assert.NotNull(response);
 
-        // Send abort (the token is embedded in the response, we'll just test protocol handling)
         var exception = Record.Exception(() =>
         {
             adapter.RaiseWebMessage(
                 """{"jsonrpc":"2.0","method":"$/enumerator/abort","params":{"token":"nonexistent"}}""",
                 "*", core.ChannelId);
-            _dispatcher.RunAll();
+            DrainDispatcher(200);
         });
         Assert.Null(exception);
     }
@@ -251,19 +283,18 @@ public sealed class BridgeStreamingTests
     {
         var (core, adapter) = CreateCoreWithRpc();
         var capturedScripts = new List<string>();
-        adapter.ScriptCallback = script => { capturedScripts.Add(script); return null; };
+        adapter.ScriptCallback = script => { lock (capturedScripts) capturedScripts.Add(script); return null; };
 
         core.Bridge.Expose<IStreamingService>(new FakeStreamingService());
-        capturedScripts.Clear();
+        lock (capturedScripts) capturedScripts.Clear();
 
         adapter.RaiseWebMessage(
             """{"jsonrpc":"2.0","id":"timeout-1","method":"StreamingService.streamMessages","params":{"topic":"test"}}""",
             "*", core.ChannelId);
-        _dispatcher.RunAll();
-        Thread.Sleep(100);
-        _dispatcher.RunAll();
+        DrainDispatcher(500);
 
-        var response = capturedScripts.FirstOrDefault(s => s.Contains("token"));
+        string? response;
+        lock (capturedScripts) response = capturedScripts.FirstOrDefault(s => s.Contains("token"));
         Assert.NotNull(response);
 
         Assert.Equal(TimeSpan.FromSeconds(30), WebViewRpcService.EnumeratorInactivityTimeout);
@@ -274,36 +305,117 @@ public sealed class BridgeStreamingTests
     {
         var (core, adapter) = CreateCoreWithRpc();
         var capturedScripts = new List<string>();
-        adapter.ScriptCallback = script => { capturedScripts.Add(script); return null; };
+        adapter.ScriptCallback = script => { lock (capturedScripts) capturedScripts.Add(script); return null; };
 
         core.Bridge.Expose<IStreamingService>(new FakeStreamingService());
-        capturedScripts.Clear();
+        lock (capturedScripts) capturedScripts.Clear();
 
         adapter.RaiseWebMessage(
             """{"jsonrpc":"2.0","id":"reset-1","method":"StreamingService.streamMessages","params":{"topic":"test"}}""",
             "*", core.ChannelId);
-        _dispatcher.RunAll();
-        Thread.Sleep(100);
-        _dispatcher.RunAll();
+        DrainDispatcher(500);
 
-        var tokenResponse = capturedScripts.FirstOrDefault(s => s.Contains("token"));
+        string? tokenResponse;
+        lock (capturedScripts) tokenResponse = capturedScripts.FirstOrDefault(s => s.Contains("token") && s.Contains("_onResponse"));
         Assert.NotNull(tokenResponse);
+        var token = ExtractToken(tokenResponse!);
 
-        var guidMatch = System.Text.RegularExpressions.Regex.Match(
-            tokenResponse!, @"([a-f0-9]{8}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{12})");
-        Assert.True(guidMatch.Success, "Should extract enumerator token GUID from response");
-
-        var token = guidMatch.Groups[1].Value;
-
-        capturedScripts.Clear();
+        lock (capturedScripts) capturedScripts.Clear();
         adapter.RaiseWebMessage(
             $$$"""{"jsonrpc":"2.0","id":"next-1","method":"$/enumerator/next/{{{token}}}","params":{}}""",
             "*", core.ChannelId);
-        _dispatcher.RunAll();
-        Thread.Sleep(100);
-        _dispatcher.RunAll();
+        DrainDispatcher(500);
 
-        var nextResponse = capturedScripts.FirstOrDefault(s => s.Contains("_onResponse"));
+        string? nextResponse;
+        lock (capturedScripts) nextResponse = capturedScripts.FirstOrDefault(s => s.Contains("_onResponse"));
         Assert.NotNull(nextResponse);
+    }
+
+    [Fact]
+    public void Enumerator_next_returns_value_not_error()
+    {
+        var (core, adapter) = CreateCoreWithRpc();
+        var capturedScripts = new List<string>();
+        adapter.ScriptCallback = script => { lock (capturedScripts) capturedScripts.Add(script); return null; };
+
+        core.Bridge.Expose<IStreamingService>(new FakeStreamingService());
+        lock (capturedScripts) capturedScripts.Clear();
+
+        adapter.RaiseWebMessage(
+            """{"jsonrpc":"2.0","id":"v-1","method":"StreamingService.streamMessages","params":{"topic":"hello"}}""",
+            "*", core.ChannelId);
+        DrainDispatcher(500);
+
+        string? tokenResponse;
+        lock (capturedScripts) tokenResponse = capturedScripts.FirstOrDefault(s => s.Contains("token") && s.Contains("_onResponse"));
+        Assert.NotNull(tokenResponse);
+        var token = ExtractToken(tokenResponse!);
+
+        lock (capturedScripts) capturedScripts.Clear();
+        adapter.RaiseWebMessage(
+            $$$"""{"jsonrpc":"2.0","id":"v-next-1","method":"$/enumerator/next/{{{token}}}","params":{}}""",
+            "*", core.ChannelId);
+        DrainDispatcher(500);
+
+        string? nextResp;
+        string allResp;
+        lock (capturedScripts)
+        {
+            nextResp = capturedScripts.FirstOrDefault(s => s.Contains("_onResponse") && s.Contains("v-next-1"));
+            allResp = string.Join("\n---\n", capturedScripts.Where(s => s.Contains("_onResponse")));
+        }
+        Assert.NotNull(nextResp);
+        Assert.True(nextResp!.Contains("values"), $"Expected 'values'. Got:\n{allResp}");
+    }
+
+    private void DrainDispatcher(int totalMs)
+    {
+        var deadline = Environment.TickCount64 + totalMs;
+        while (Environment.TickCount64 < deadline)
+        {
+            _dispatcher.RunAll();
+            Thread.Sleep(20);
+        }
+        _dispatcher.RunAll();
+    }
+
+    [Fact]
+    public void Streaming_with_CancellationToken_survives_request_CTS_disposal()
+    {
+        var (core, adapter) = CreateCoreWithRpc();
+        var capturedScripts = new List<string>();
+        adapter.ScriptCallback = script => { lock (capturedScripts) capturedScripts.Add(script); return null; };
+
+        core.Bridge.Expose<ICancellableStreamingService>(new FakeCancellableStreamingService());
+        lock (capturedScripts) capturedScripts.Clear();
+
+        adapter.RaiseWebMessage(
+            """{"jsonrpc":"2.0","id":"cts-1","method":"CancellableStreamingService.streamTokens","params":{"text":"ABC"}}""",
+            "*", core.ChannelId);
+        DrainDispatcher(500);
+
+        string? initResponse;
+        lock (capturedScripts) initResponse = capturedScripts.FirstOrDefault(s => s.Contains("token") && s.Contains("_onResponse"));
+        Assert.NotNull(initResponse);
+        Assert.DoesNotContain("error", initResponse!, StringComparison.OrdinalIgnoreCase);
+        var token = ExtractToken(initResponse!);
+
+        lock (capturedScripts) capturedScripts.Clear();
+        adapter.RaiseWebMessage(
+            $$$"""{"jsonrpc":"2.0","id":"cts-next-1","method":"$/enumerator/next/{{{token}}}","params":{}}""",
+            "*", core.ChannelId);
+        DrainDispatcher(500);
+
+        string? nextResponse;
+        string allResponses;
+        lock (capturedScripts)
+        {
+            nextResponse = capturedScripts.FirstOrDefault(s => s.Contains("_onResponse") && s.Contains("cts-next-1"));
+            allResponses = string.Join("\n---\n", capturedScripts.Where(s => s.Contains("_onResponse")));
+        }
+        Assert.NotNull(nextResponse);
+        Assert.True(nextResponse!.Contains("values"),
+            $"Expected 'values' in next response. Actual responses:\n{allResponses}");
+        Assert.DoesNotContain("error", nextResponse, StringComparison.OrdinalIgnoreCase);
     }
 }

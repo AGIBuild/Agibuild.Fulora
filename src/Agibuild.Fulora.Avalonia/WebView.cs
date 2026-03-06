@@ -76,6 +76,7 @@ public class WebView : NativeControlHost, IWebView
     private EventHandler<WindowClosingEventArgs>? _hostWindowClosingHandler;
     private WebViewOverlayHost? _overlayHost;
     private EventHandler? _layoutUpdatedHandler;
+    private EventHandler<PixelPointEventArgs>? _hostWindowPositionChangedHandler;
 
     // ---------------------------------------------------------------------------
     //  Constructor
@@ -728,6 +729,10 @@ public class WebView : NativeControlHost, IWebView
         {
             _overlayHost ??= new WebViewOverlayHost(this);
             _overlayHost.Content = newContent;
+
+            // Trigger immediate position update if already in the visual tree.
+            if (VisualRoot is not null)
+                OnLayoutUpdatedForOverlay(this, EventArgs.Empty);
         }
         else
         {
@@ -984,6 +989,13 @@ public class WebView : NativeControlHost, IWebView
 
         _layoutUpdatedHandler = OnLayoutUpdatedForOverlay;
         LayoutUpdated += _layoutUpdatedHandler;
+
+        var window = TopLevel.GetTopLevel(this) as Window;
+        if (window is not null && _hostWindowPositionChangedHandler is null)
+        {
+            _hostWindowPositionChangedHandler = (_, _) => OnLayoutUpdatedForOverlay(this, EventArgs.Empty);
+            window.PositionChanged += _hostWindowPositionChangedHandler;
+        }
     }
 
     private void UnsubscribeLayoutOverlayEvents()
@@ -992,6 +1004,14 @@ public class WebView : NativeControlHost, IWebView
         {
             LayoutUpdated -= _layoutUpdatedHandler;
             _layoutUpdatedHandler = null;
+        }
+
+        if (_hostWindowPositionChangedHandler is not null)
+        {
+            var window = TopLevel.GetTopLevel(this) as Window;
+            if (window is not null)
+                window.PositionChanged -= _hostWindowPositionChangedHandler;
+            _hostWindowPositionChangedHandler = null;
         }
     }
 

@@ -11,16 +11,13 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
+        WebView.EnvironmentOptions = new WebViewEnvironmentOptions { EnableDevTools = true };
+
         Loaded += async (_, _) =>
         {
-            // ── 1. Navigate to SPA entry point ──────────────────────────
-            // Navigate FIRST so the page is loaded, then expose Bridge services
-            // (JS stubs must be injected into the loaded page, not about:blank).
             try
             {
 #if DEBUG
-                // In Debug: load directly from Vite dev server
-                // (run `npm run dev` in AvaloniReact.Web first).
                 await WebView.NavigateAsync(new Uri("http://localhost:5173"));
 #else
                 // In Release: use SPA hosting with embedded resources via app:// scheme.

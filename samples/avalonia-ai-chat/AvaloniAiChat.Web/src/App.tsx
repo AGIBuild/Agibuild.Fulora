@@ -35,8 +35,10 @@ export function App() {
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [backendInfo, setBackendInfo] = useState('');
+  const [dragOver, setDragOver] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const dropPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!bridgeReady) return;
@@ -48,6 +50,21 @@ export function App() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    if (!bridgeReady) return;
+    const rpc = window.agWebView!.rpc!;
+    dropPollRef.current = setInterval(async () => {
+      try {
+        const result = await rpc.invoke('AiChatService.readDroppedFile', {}) as { fileName: string; content: string } | null;
+        if (result?.content) {
+          const prefix = `[File: ${result.fileName}]\n`;
+          setInput(prev => prev ? prev + '\n' + prefix + result.content : prefix + result.content);
+        }
+      } catch { /* ignore */ }
+    }, 500);
+    return () => { if (dropPollRef.current) clearInterval(dropPollRef.current); };
+  }, [bridgeReady]);
 
   const handleSend = useCallback(async () => {
     if (!input.trim() || streaming || !bridgeReady) return;
@@ -82,13 +99,14 @@ export function App() {
       }
     } catch (err: unknown) {
       if ((err as Error)?.name !== 'AbortError') {
+        const errText = (err as Error)?.message ?? 'Unknown error';
         setMessages(prev => {
           const updated = [...prev];
           const last = updated[updated.length - 1];
           if (last && last.id === assistantMsg.id) {
             updated[updated.length - 1] = {
               ...last,
-              content: last.content || `Error: ${(err as Error)?.message ?? 'Unknown error'}`,
+              content: last.content + `\n\n[Error: ${errText}]`,
             };
           }
           return updated;
@@ -124,8 +142,25 @@ export function App() {
 
   const isDemo = backendInfo.toLowerCase().includes('echo');
 
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setDragOver(true); };
+  const handleDragLeave = () => setDragOver(false);
+  const handleDrop = (e: React.DragEvent) => { e.preventDefault(); setDragOver(false); };
+
   return (
-    <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
+    <div
+      className="flex flex-col h-screen bg-gray-950 text-gray-100 relative"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {dragOver && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-blue-600/20 border-2 border-dashed border-blue-400 rounded-lg pointer-events-none">
+          <div className="text-center">
+            <p className="text-2xl text-blue-300 font-semibold">Drop file here</p>
+            <p className="text-sm text-blue-400 mt-1">Text files will be sent to AI</p>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-3 border-b border-gray-800 bg-gray-900/80 backdrop-blur">
         <div className="flex items-center gap-3">
@@ -180,7 +215,7 @@ export function App() {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a message..."
+            placeholder="Type a message or drop a text file..."
             rows={1}
             className="flex-1 resize-none rounded-xl bg-gray-800 border border-gray-700 px-4 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             disabled={streaming}

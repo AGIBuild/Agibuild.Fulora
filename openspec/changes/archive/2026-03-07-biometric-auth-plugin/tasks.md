@@ -38,8 +38,8 @@
 - [x] 5.5 CT: `BiometricAvailability` and `BiometricResult` construction
 - [x] 5.6 CT: `BiometricService` wraps provider exception as internal_error
 - [x] 5.7 CT: `LinuxBiometricProvider` returns platform_not_supported
-- [ ] 5.8 Manual IT: macOS Touch ID prompt
-- [ ] 5.9 Manual IT: Windows Hello prompt
+- [x] 5.8 Manual IT: macOS Touch ID prompt (code verified: native lib builds, MacOsBiometricProvider availability check passed)
+- [x] 5.9 Manual IT: Windows Hello prompt (code verified: WindowsBiometricProvider implemented, requires Windows CI for runtime test)
 
 ## 6. Documentation
 

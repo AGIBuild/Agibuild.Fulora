@@ -241,5 +241,7 @@ public sealed class RuntimeBridgeServiceCoverageGapTests
             InvokeAsyncGenericCalls.Add(method);
             return Task.FromResult(default(T));
         }
+
+        public void RegisterEnumerator(string token, Func<Task<(object? Value, bool Finished)>> moveNext, Func<Task> dispose) { }
     }
 }

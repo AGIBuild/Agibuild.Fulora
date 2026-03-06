@@ -1276,6 +1276,7 @@ public sealed class BranchCoverageRound3Tests
         }
         public Task<T?> InvokeAsync<T>(string method, object? args = null) => Task.FromResult<T?>(default);
         public bool TryProcessMessage(string body) => false;
+        public void RegisterEnumerator(string token, Func<Task<(object? Value, bool Finished)>> moveNext, Func<Task> dispose) { }
     }
 
     #endregion

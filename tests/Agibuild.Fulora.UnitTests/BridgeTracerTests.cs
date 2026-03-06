@@ -363,5 +363,7 @@ public sealed class TracingRpcWrapperTests
             Invocations.Add((method, args));
             return Task.CompletedTask;
         }
+
+        public void RegisterEnumerator(string token, Func<Task<(object? Value, bool Finished)>> moveNext, Func<Task> dispose) { }
     }
 }

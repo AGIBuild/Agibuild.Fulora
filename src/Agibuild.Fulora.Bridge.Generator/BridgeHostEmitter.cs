@@ -162,11 +162,23 @@ internal static class BridgeHostEmitter
 
         EmitParameterDeserialization(sb, method, indent);
 
+        // When the handler has a CancellationToken, the RPC dispatcher's CTS is disposed after the
+        // init response returns. Create a linked CTS whose lifetime extends to enumerator disposal,
+        // so that subsequent MoveNextAsync calls (e.g. Task.Delay with CT) don't hit ObjectDisposedException.
+        if (hasCt)
+        {
+            sb.AppendLine($"{indent}            var __streamCts = __ct.CanBeCanceled");
+            sb.AppendLine($"{indent}                ? global::System.Threading.CancellationTokenSource.CreateLinkedTokenSource(__ct)");
+            sb.AppendLine($"{indent}                : null;");
+            sb.AppendLine($"{indent}            var __streamCt = __streamCts?.Token ?? __ct;");
+        }
+
+        var ctVarName = hasCt ? "__streamCt" : "default";
         var paramList = string.Join(", ", method.Parameters.Select(p =>
-            p.IsCancellationToken ? "__ct" : $"__{p.CamelCaseName}"));
+            p.IsCancellationToken ? "__streamCt" : $"__{p.CamelCaseName}"));
 
         sb.AppendLine($"{indent}            var __enumerable = impl.{method.Name}({paramList});");
-        sb.AppendLine($"{indent}            var __enumerator = __enumerable.GetAsyncEnumerator({(hasCt ? "__ct" : "default")});");
+        sb.AppendLine($"{indent}            var __enumerator = __enumerable.GetAsyncEnumerator({ctVarName});");
         sb.AppendLine($"{indent}            var __token = global::System.Guid.NewGuid().ToString(\"N\");");
         sb.AppendLine();
         sb.AppendLine($"{indent}            // Prefetch first item for reduced latency");
@@ -178,6 +190,8 @@ internal static class BridgeHostEmitter
         sb.AppendLine($"{indent}            else");
         sb.AppendLine($"{indent}            {{");
         sb.AppendLine($"{indent}                await __enumerator.DisposeAsync().ConfigureAwait(false);");
+        if (hasCt)
+            sb.AppendLine($"{indent}                __streamCts?.Dispose();");
         sb.AppendLine($"{indent}                return (object?)new {{ token = __token, values = global::System.Array.Empty<object>(), finished = true }};");
         sb.AppendLine($"{indent}            }}");
         sb.AppendLine();
@@ -188,7 +202,14 @@ internal static class BridgeHostEmitter
         sb.AppendLine($"{indent}                        return ((object?)__enumerator.Current, false);");
         sb.AppendLine($"{indent}                    return (null, true);");
         sb.AppendLine($"{indent}                }},");
-        sb.AppendLine($"{indent}                async () => await __enumerator.DisposeAsync().ConfigureAwait(false));");
+        if (hasCt)
+        {
+            sb.AppendLine($"{indent}                async () => {{ await __enumerator.DisposeAsync().ConfigureAwait(false); __streamCts?.Dispose(); }});");
+        }
+        else
+        {
+            sb.AppendLine($"{indent}                async () => await __enumerator.DisposeAsync().ConfigureAwait(false));");
+        }
         sb.AppendLine();
         sb.AppendLine($"{indent}            return (object?)new {{ token = __token, values = __prefetch }};");
 

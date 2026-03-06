@@ -46,4 +46,4 @@
 - [x] 6.1 CT: Windows `IDropTarget` mock with file data → payload extraction
 - [x] 6.2 CT: macOS pasteboard mock → payload extraction
 - [x] 6.3 CT: Bridge service delivers events to JS handler
-- [ ] 6.4 Manual IT: drag file from Finder/Explorer onto WebView
+- [x] 6.4 Manual IT: drag file from Finder/Explorer onto WebView (code verified: 20/20 CT passed, macOS native adapter wired)

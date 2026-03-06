@@ -521,6 +521,8 @@ public sealed class BranchCoverageRound2Tests
             InvokedMethods.Add(method);
             return Task.FromResult(default(T));
         }
+
+        public void RegisterEnumerator(string token, Func<Task<(object? Value, bool Finished)>> moveNext, Func<Task> dispose) { }
     }
 
     private static JsonElement ParseJson(string json)
