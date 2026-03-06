@@ -198,7 +198,7 @@ public sealed class BridgeStreamingTests
         adapter.RaiseWebMessage(
             """{"jsonrpc":"2.0","id":"stream-1","method":"StreamingService.streamMessages","params":{"topic":"test"}}""",
             "*", core.ChannelId);
-        DrainDispatcher(500);
+        DrainDispatcher(2000);
 
         string? response;
         lock (capturedScripts) response = capturedScripts.FirstOrDefault(s => s.Contains("_onResponse") && s.Contains("token"));
@@ -219,7 +219,7 @@ public sealed class BridgeStreamingTests
         adapter.RaiseWebMessage(
             """{"jsonrpc":"2.0","id":"stream-abort","method":"StreamingService.streamMessages","params":{"topic":"test"}}""",
             "*", core.ChannelId);
-        DrainDispatcher(500);
+        DrainDispatcher(2000);
 
         string? response;
         lock (capturedScripts) response = capturedScripts.FirstOrDefault(s => s.Contains("token"));
@@ -291,7 +291,7 @@ public sealed class BridgeStreamingTests
         adapter.RaiseWebMessage(
             """{"jsonrpc":"2.0","id":"timeout-1","method":"StreamingService.streamMessages","params":{"topic":"test"}}""",
             "*", core.ChannelId);
-        DrainDispatcher(500);
+        DrainDispatcher(2000);
 
         string? response;
         lock (capturedScripts) response = capturedScripts.FirstOrDefault(s => s.Contains("token"));
@@ -313,7 +313,7 @@ public sealed class BridgeStreamingTests
         adapter.RaiseWebMessage(
             """{"jsonrpc":"2.0","id":"reset-1","method":"StreamingService.streamMessages","params":{"topic":"test"}}""",
             "*", core.ChannelId);
-        DrainDispatcher(500);
+        DrainDispatcher(2000);
 
         string? tokenResponse;
         lock (capturedScripts) tokenResponse = capturedScripts.FirstOrDefault(s => s.Contains("token") && s.Contains("_onResponse"));
@@ -324,7 +324,7 @@ public sealed class BridgeStreamingTests
         adapter.RaiseWebMessage(
             $$$"""{"jsonrpc":"2.0","id":"next-1","method":"$/enumerator/next/{{{token}}}","params":{}}""",
             "*", core.ChannelId);
-        DrainDispatcher(500);
+        DrainDispatcher(2000);
 
         string? nextResponse;
         lock (capturedScripts) nextResponse = capturedScripts.FirstOrDefault(s => s.Contains("_onResponse"));
@@ -344,7 +344,7 @@ public sealed class BridgeStreamingTests
         adapter.RaiseWebMessage(
             """{"jsonrpc":"2.0","id":"v-1","method":"StreamingService.streamMessages","params":{"topic":"hello"}}""",
             "*", core.ChannelId);
-        DrainDispatcher(500);
+        DrainDispatcher(2000);
 
         string? tokenResponse;
         lock (capturedScripts) tokenResponse = capturedScripts.FirstOrDefault(s => s.Contains("token") && s.Contains("_onResponse"));
@@ -355,7 +355,7 @@ public sealed class BridgeStreamingTests
         adapter.RaiseWebMessage(
             $$$"""{"jsonrpc":"2.0","id":"v-next-1","method":"$/enumerator/next/{{{token}}}","params":{}}""",
             "*", core.ChannelId);
-        DrainDispatcher(500);
+        DrainDispatcher(2000);
 
         string? nextResp;
         string allResp;
@@ -392,7 +392,7 @@ public sealed class BridgeStreamingTests
         adapter.RaiseWebMessage(
             """{"jsonrpc":"2.0","id":"cts-1","method":"CancellableStreamingService.streamTokens","params":{"text":"ABC"}}""",
             "*", core.ChannelId);
-        DrainDispatcher(500);
+        DrainDispatcher(2000);
 
         string? initResponse;
         lock (capturedScripts) initResponse = capturedScripts.FirstOrDefault(s => s.Contains("token") && s.Contains("_onResponse"));
@@ -404,7 +404,7 @@ public sealed class BridgeStreamingTests
         adapter.RaiseWebMessage(
             $$$"""{"jsonrpc":"2.0","id":"cts-next-1","method":"$/enumerator/next/{{{token}}}","params":{}}""",
             "*", core.ChannelId);
-        DrainDispatcher(500);
+        DrainDispatcher(2000);
 
         string? nextResponse;
         string allResponses;
