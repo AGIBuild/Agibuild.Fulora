@@ -26,6 +26,27 @@ public interface IAiBridgeService
 
     /// <summary>Streams chat completion tokens as they are generated.</summary>
     IAsyncEnumerable<string> StreamCompletion(AiChatRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Runs a chat completion with registered tools (tool-calling loop).</summary>
+    Task<AiChatResult> RunWithTools(AiChatRequest request);
+
+    /// <summary>Streams a chat completion with registered tools.</summary>
+    IAsyncEnumerable<string> StreamWithTools(AiChatRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Creates a new conversation session.</summary>
+    Task<string> CreateConversation(AiConversationCreateRequest request);
+
+    /// <summary>Sends a message in a conversation and returns the response.</summary>
+    Task<AiChatResult> SendMessage(AiConversationMessageRequest request);
+
+    /// <summary>Sends a message in a conversation and streams the response.</summary>
+    IAsyncEnumerable<string> StreamMessage(AiConversationMessageRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Gets the conversation history.</summary>
+    Task<AiConversationHistory> GetHistory(string conversationId);
+
+    /// <summary>Deletes a conversation.</summary>
+    Task DeleteConversation(string conversationId);
 }
 
 /// <summary>Chat completion request from JS.</summary>
@@ -58,6 +79,58 @@ public sealed record AiChatResult
 
     /// <summary>Completion tokens used.</summary>
     public int? CompletionTokens { get; init; }
+}
+
+/// <summary>Request to create a conversation session.</summary>
+public sealed record AiConversationCreateRequest
+{
+    /// <summary>Optional system prompt for the conversation.</summary>
+    public string? SystemPrompt { get; init; }
+
+    /// <summary>Optional provider name.</summary>
+    public string? Provider { get; init; }
+
+    /// <summary>Optional model ID override.</summary>
+    public string? ModelId { get; init; }
+}
+
+/// <summary>Request to send a message in a conversation.</summary>
+public sealed record AiConversationMessageRequest
+{
+    /// <summary>The conversation ID.</summary>
+    public required string ConversationId { get; init; }
+
+    /// <summary>The user message text.</summary>
+    public required string Message { get; init; }
+
+    /// <summary>Optional provider name override (null = use conversation default).</summary>
+    public string? Provider { get; init; }
+
+    /// <summary>Optional model ID override.</summary>
+    public string? ModelId { get; init; }
+
+    /// <summary>Whether to use registered tools. Default: false.</summary>
+    public bool UseTools { get; init; }
+}
+
+/// <summary>Conversation history returned to JS.</summary>
+public sealed record AiConversationHistory
+{
+    /// <summary>The conversation ID.</summary>
+    public required string ConversationId { get; init; }
+
+    /// <summary>Messages in chronological order.</summary>
+    public required AiHistoryMessage[] Messages { get; init; }
+}
+
+/// <summary>A single message in conversation history.</summary>
+public sealed record AiHistoryMessage
+{
+    /// <summary>Role: "system", "user", or "assistant".</summary>
+    public required string Role { get; init; }
+
+    /// <summary>Message text content.</summary>
+    public required string Text { get; init; }
 }
 
 /// <summary>Typed (structured output) chat request from JS.</summary>

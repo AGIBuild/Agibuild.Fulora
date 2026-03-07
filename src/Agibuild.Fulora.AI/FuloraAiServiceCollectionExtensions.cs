@@ -32,6 +32,23 @@ public static class FuloraAiServiceCollectionExtensions
             services.TryAddSingleton(builder.MeteringOptions);
         }
 
+        if (builder.ToolCallingEnabled)
+        {
+            services.TryAddSingleton(builder.ToolCallingOptions);
+        }
+
+        if (builder.ConversationEnabled)
+        {
+            services.TryAddSingleton(builder.ConversationOptions);
+            services.TryAddSingleton<IAiConversationManager>(
+                sp => new InMemoryAiConversationManager(sp.GetRequiredService<AiConversationOptions>()));
+        }
+        else
+        {
+            services.TryAddSingleton(new AiConversationOptions());
+            services.TryAddSingleton<IAiConversationManager, InMemoryAiConversationManager>();
+        }
+
         services.TryAddSingleton<IAiPayloadStore, InMemoryAiPayloadStore>();
         services.TryAddSingleton<IAiToolRegistry, AiToolRegistry>();
         services.TryAddTransient<IAiBridgeService, AiBridgeService>();

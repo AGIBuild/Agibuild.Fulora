@@ -11,8 +11,12 @@ public sealed class FuloraAiBuilder
     private readonly AiProviderRegistry _registry = new();
     internal AiResilienceOptions ResilienceOptions { get; } = new();
     internal AiMeteringOptions MeteringOptions { get; } = new();
+    internal AiToolCallingOptions ToolCallingOptions { get; } = new();
+    internal AiConversationOptions ConversationOptions { get; } = new();
     internal bool ResilienceEnabled { get; private set; }
     internal bool MeteringEnabled { get; private set; }
+    internal bool ToolCallingEnabled { get; private set; }
+    internal bool ConversationEnabled { get; private set; }
 
     internal IServiceCollection Services { get; }
 
@@ -48,6 +52,22 @@ public sealed class FuloraAiBuilder
     {
         MeteringEnabled = true;
         configure?.Invoke(MeteringOptions);
+        return this;
+    }
+
+    /// <summary>Enables tool-calling loop via FunctionInvokingChatClient.</summary>
+    public FuloraAiBuilder AddToolCalling(Action<AiToolCallingOptions>? configure = null)
+    {
+        ToolCallingEnabled = true;
+        configure?.Invoke(ToolCallingOptions);
+        return this;
+    }
+
+    /// <summary>Enables conversation session management.</summary>
+    public FuloraAiBuilder AddConversation(Action<AiConversationOptions>? configure = null)
+    {
+        ConversationEnabled = true;
+        configure?.Invoke(ConversationOptions);
         return this;
     }
 

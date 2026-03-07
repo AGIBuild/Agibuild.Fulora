@@ -24,6 +24,30 @@ export interface AiTypedChatRequest {
   maxRetries?: number;
 }
 
+export interface AiConversationCreateRequest {
+  systemPrompt?: string;
+  provider?: string;
+  modelId?: string;
+}
+
+export interface AiConversationMessageRequest {
+  conversationId: string;
+  message: string;
+  provider?: string;
+  modelId?: string;
+  useTools?: boolean;
+}
+
+export interface AiConversationHistory {
+  conversationId: string;
+  messages: AiHistoryMessage[];
+}
+
+export interface AiHistoryMessage {
+  role: string;
+  text: string;
+}
+
 // ── Service contract matching IAiBridgeService ──
 
 export interface IAiBridgeService {
@@ -37,6 +61,13 @@ export interface IAiBridgeService {
   }): Promise<string>;
   FetchBlob(params: { blobId: string }): Promise<string | null>;
   StreamCompletion(params: AiChatRequest): AsyncIterable<string>;
+  RunWithTools(params: AiChatRequest): Promise<AiChatResult>;
+  StreamWithTools(params: AiChatRequest): AsyncIterable<string>;
+  CreateConversation(params: AiConversationCreateRequest): Promise<string>;
+  SendMessage(params: AiConversationMessageRequest): Promise<AiChatResult>;
+  StreamMessage(params: AiConversationMessageRequest): AsyncIterable<string>;
+  GetHistory(params: { conversationId: string }): Promise<AiConversationHistory>;
+  DeleteConversation(params: { conversationId: string }): Promise<void>;
 }
 
 // ── Helper class ──
@@ -106,6 +137,93 @@ export class AiBridgeClient {
       mimeType,
       name,
     });
+  }
+
+  /** Run a chat completion with registered tools (tool-calling loop). */
+  async runWithTools(
+    message: string,
+    options?: {
+      systemPrompt?: string;
+      provider?: string;
+      modelId?: string;
+    }
+  ): Promise<AiChatResult> {
+    return this.service.RunWithTools({
+      message,
+      systemPrompt: options?.systemPrompt,
+      provider: options?.provider,
+      modelId: options?.modelId,
+    });
+  }
+
+  /** Stream a chat completion with registered tools. */
+  async *streamWithTools(
+    message: string,
+    options?: {
+      systemPrompt?: string;
+      provider?: string;
+      modelId?: string;
+    }
+  ): AsyncIterable<string> {
+    yield* this.service.StreamWithTools({
+      message,
+      systemPrompt: options?.systemPrompt,
+      provider: options?.provider,
+      modelId: options?.modelId,
+    });
+  }
+
+  /** Create a new conversation session. */
+  async createConversation(options?: {
+    systemPrompt?: string;
+    provider?: string;
+    modelId?: string;
+  }): Promise<string> {
+    return this.service.CreateConversation({
+      systemPrompt: options?.systemPrompt,
+      provider: options?.provider,
+      modelId: options?.modelId,
+    });
+  }
+
+  /** Send a message in a conversation. */
+  async sendMessage(
+    conversationId: string,
+    message: string,
+    options?: { provider?: string; modelId?: string; useTools?: boolean }
+  ): Promise<AiChatResult> {
+    return this.service.SendMessage({
+      conversationId,
+      message,
+      provider: options?.provider,
+      modelId: options?.modelId,
+      useTools: options?.useTools,
+    });
+  }
+
+  /** Stream a message in a conversation. */
+  async *streamMessage(
+    conversationId: string,
+    message: string,
+    options?: { provider?: string; modelId?: string; useTools?: boolean }
+  ): AsyncIterable<string> {
+    yield* this.service.StreamMessage({
+      conversationId,
+      message,
+      provider: options?.provider,
+      modelId: options?.modelId,
+      useTools: options?.useTools,
+    });
+  }
+
+  /** Get conversation history. */
+  async getHistory(conversationId: string): Promise<AiConversationHistory> {
+    return this.service.GetHistory({ conversationId });
+  }
+
+  /** Delete a conversation. */
+  async deleteConversation(conversationId: string): Promise<void> {
+    return this.service.DeleteConversation({ conversationId });
   }
 
   /** Stream chat completion tokens as they are generated. */
