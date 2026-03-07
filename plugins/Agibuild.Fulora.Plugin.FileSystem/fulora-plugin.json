@@ -1,0 +1,8 @@
+{
+  "id": "Agibuild.Fulora.Plugin.FileSystem",
+  "displayName": "File System",
+  "services": ["FileSystemService"],
+  "npmPackage": "@agibuild/bridge-plugin-filesystem",
+  "minFuloraVersion": "1.0.0",
+  "platforms": ["windows", "macos", "linux", "android", "ios"]
+}

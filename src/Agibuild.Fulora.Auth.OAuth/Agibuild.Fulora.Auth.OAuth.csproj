@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <PackageId>Agibuild.Fulora.Auth.OAuth</PackageId>
+    <Description>OAuth PKCE authentication helper for Agibuild.Fulora hybrid apps. Provides code verifier/challenge generation, authorization URL building, token exchange, and token refresh.</Description>
+    <PackageTags>fulora;auth;oauth;pkce;enterprise;sso</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Agibuild.Fulora.Auth.OAuth.Tests" />
+    <InternalsVisibleTo Include="Agibuild.Fulora.UnitTests" />
+  </ItemGroup>
+
+</Project>

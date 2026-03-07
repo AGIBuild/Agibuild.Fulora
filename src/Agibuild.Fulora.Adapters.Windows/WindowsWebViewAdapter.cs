@@ -882,31 +882,29 @@ internal sealed class WindowsWebViewAdapter : IWebViewAdapter, INativeWebViewHan
 
     private static Exception MapWebErrorStatus(CoreWebView2WebErrorStatus status, string message, Guid navigationId, Uri requestUri)
     {
-        return status switch
+        var category = status switch
         {
-            // Timeout
             CoreWebView2WebErrorStatus.Timeout
-                => new WebViewTimeoutException(message, navigationId, requestUri),
+                => NavigationErrorCategory.Timeout,
 
-            // Network
             CoreWebView2WebErrorStatus.ConnectionAborted or
             CoreWebView2WebErrorStatus.ConnectionReset or
             CoreWebView2WebErrorStatus.Disconnected or
             CoreWebView2WebErrorStatus.CannotConnect or
             CoreWebView2WebErrorStatus.HostNameNotResolved
-                => new WebViewNetworkException(message, navigationId, requestUri),
+                => NavigationErrorCategory.Network,
 
-            // SSL/TLS
             CoreWebView2WebErrorStatus.CertificateCommonNameIsIncorrect or
             CoreWebView2WebErrorStatus.CertificateExpired or
             CoreWebView2WebErrorStatus.ClientCertificateContainsErrors or
             CoreWebView2WebErrorStatus.CertificateRevoked or
             CoreWebView2WebErrorStatus.CertificateIsInvalid
-                => new WebViewSslException(message, navigationId, requestUri),
+                => NavigationErrorCategory.Ssl,
 
-            // All other non-success statuses
-            _ => new WebViewNavigationException(message, navigationId, requestUri),
+            _ => NavigationErrorCategory.Other,
         };
+
+        return NavigationErrorFactory.Create(category, message, navigationId, requestUri);
     }
 
     // ==================== Navigation — commands ====================

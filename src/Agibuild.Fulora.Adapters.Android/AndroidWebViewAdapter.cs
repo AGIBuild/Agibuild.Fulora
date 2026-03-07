@@ -968,27 +968,25 @@ internal sealed class AndroidWebViewAdapter : IWebViewAdapter, INativeWebViewHan
 
     private static Exception MapErrorCode(ClientError errorCode, string message, Guid navigationId, Uri requestUri)
     {
-        return errorCode switch
+        var category = errorCode switch
         {
-            // Timeout
             ClientError.Timeout
-                => new WebViewTimeoutException(message, navigationId, requestUri),
+                => NavigationErrorCategory.Timeout,
 
-            // Network
             ClientError.HostLookup or
             ClientError.Connect or
             ClientError.Io or
             ClientError.Unknown
-                => new WebViewNetworkException(message, navigationId, requestUri),
+                => NavigationErrorCategory.Network,
 
-            // SSL/TLS
             ClientError.FailedSslHandshake or
             ClientError.Authentication
-                => new WebViewSslException(message, navigationId, requestUri),
+                => NavigationErrorCategory.Ssl,
 
-            // All others
-            _ => new WebViewNavigationException(message, navigationId, requestUri),
+            _ => NavigationErrorCategory.Other,
         };
+
+        return NavigationErrorFactory.Create(category, message, navigationId, requestUri);
     }
 
     private static ViewGroup ResolveParentView(INativeHandle parentHandle)

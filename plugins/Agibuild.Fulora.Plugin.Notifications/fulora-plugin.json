@@ -1,0 +1,8 @@
+{
+  "id": "Agibuild.Fulora.Plugin.Notifications",
+  "displayName": "Notifications",
+  "services": ["NotificationService"],
+  "npmPackage": "@agibuild/bridge-plugin-notifications",
+  "minFuloraVersion": "1.0.0",
+  "platforms": ["windows", "macos", "linux", "android", "ios"]
+}

@@ -21,6 +21,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Agibuild.Fulora.Core\Agibuild.Fulora.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="Agibuild.Fulora.UnitTests" />
   </ItemGroup>
 

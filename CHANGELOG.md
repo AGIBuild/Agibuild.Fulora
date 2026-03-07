@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] — 2026-03-07
+
+### Stabilization & Quality Hardening
+
+#### Added
+- **Adapter Shared Utilities** — Extracted `NavigationErrorFactory` and `AdapterCookieParser` from platform adapters into `Agibuild.Fulora.Adapters.Abstractions` to eliminate cross-adapter code duplication.
+- **Mutation Testing Infrastructure** — Stryker.NET integration with Nuke build target and CI workflow for mutation-based test quality validation.
+- **Quality Hardening** — Template and sample Avalonia version alignment to `12.0.0-preview1`, additional test coverage for edge cases and error paths.
+
+#### Changed
+- **Runtime Service Relocation** — Moved `GlobalShortcutService` and `ThemeService` from Avalonia UI layer to `Agibuild.Fulora.Runtime` for proper layering and mutation testing scope inclusion.
+
+### Phase 12: Enterprise & Advanced Scenarios
+
+#### Added
+- **Sentry Crash Reporting** (`Agibuild.Fulora.Telemetry.Sentry`) — `ITelemetryProvider` and `IBridgeTracer` implementations for Sentry SDK. One-line crash reporting via `AddSentry()` DI extension. Bridge call breadcrumbs, exception capture with scope enrichment, configurable parameter capture. (27 tests)
+- **Shared State Management** (`ISharedStateStore`) — Cross-WebView reactive key-value store with last-writer-wins conflict resolution. Typed `Get<T>`/`Set<T>`, `StateChanged` event notifications, immutable snapshots, DI registration via `AddSharedState()`. (21 tests)
+- **OAuth PKCE Client** (`Agibuild.Fulora.Auth.OAuth`) — RFC 7636-compliant PKCE flow for enterprise SSO. `PkceHelper` for code verifier/challenge generation, `OAuthPkceClient` for authorization URL building, token exchange, and token refresh. (23 tests)
+- **Plugin Quality & Compatibility** — `fulora-plugin.json` manifest in all 7 official plugins with machine-readable version compatibility, platform support, and service declarations. `PluginManifest` model in Core. CLI `fulora list plugins --check` for version compatibility validation. (14 tests)
+
+---
+
 ## [1.0.0] — 2026-03-01
 
 ### Phase 9: GA Release Readiness

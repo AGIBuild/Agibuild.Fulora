@@ -8,7 +8,7 @@
     <IsPackable>true</IsPackable>
     <PackageId>Agibuild.Fulora.Plugin.LocalStorage</PackageId>
     <Description>Local storage bridge plugin for Agibuild Fulora — key-value persistence via JSON file storage, registered in one call with UsePlugin.</Description>
-    <PackageTags>fulora;bridge;plugin;local-storage;key-value</PackageTags>
+    <PackageTags>fulora;bridge;plugin;local-storage;key-value;fulora-plugin</PackageTags>
     <Authors>AGIBuild</Authors>
     <License>MIT</License>
   </PropertyGroup>
@@ -17,5 +17,6 @@
     <ProjectReference Include="..\..\src\Agibuild.Fulora.Core\Agibuild.Fulora.Core.csproj" />
     <ProjectReference Include="..\..\src\Agibuild.Fulora.Bridge.Generator\Agibuild.Fulora.Bridge.Generator.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
+    <None Include="fulora-plugin.json" Pack="true" PackagePath="fulora-plugin.json" />
   </ItemGroup>
 </Project>

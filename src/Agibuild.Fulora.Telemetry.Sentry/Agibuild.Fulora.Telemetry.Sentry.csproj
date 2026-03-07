@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Agibuild.Fulora.Telemetry</RootNamespace>
+    <IsPackable>true</IsPackable>
+    <PackageId>Agibuild.Fulora.Telemetry.Sentry</PackageId>
+    <Description>Sentry crash reporting integration for Agibuild.Fulora — bridge call breadcrumbs and exception capture.</Description>
+    <PackageTags>fulora;sentry;telemetry;crash-reporting;error-tracking</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Agibuild.Fulora.Core\Agibuild.Fulora.Core.csproj" />
+    <ProjectReference Include="..\Agibuild.Fulora.DependencyInjection\Agibuild.Fulora.DependencyInjection.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Sentry" Version="5.6.0" />
+  </ItemGroup>
+</Project>

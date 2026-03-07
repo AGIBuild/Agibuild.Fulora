@@ -44,6 +44,13 @@ public sealed class GetAwaiterGetResultUsageTests
                     "tcs.Task.GetAwaiter().GetResult()",
                     "AndroidWebViewAdapter",
                     "RunOnUiThread helper blocks only at adapter boundary to satisfy platform callback shape.")
+            ],
+            ["src/Agibuild.Fulora.Telemetry.Sentry/SentryTelemetryProvider.cs"] =
+            [
+                new(
+                    "FlushAsync(_options.FlushTimeout).GetAwaiter().GetResult()",
+                    "SentryTelemetryProvider",
+                    "ITelemetryProvider.Flush() is synchronous by contract; Sentry SDK only provides async flush.")
             ]
         };
 

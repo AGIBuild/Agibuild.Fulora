@@ -136,4 +136,13 @@ public sealed class FuloraServiceBuilder
         Services.AddSingleton<IAutoUpdateService>(new AutoUpdateService(platformProvider, options));
         return this;
     }
+
+    /// <summary>
+    /// Registers the <see cref="ISharedStateStore"/> as a singleton.
+    /// </summary>
+    public FuloraServiceBuilder AddSharedState()
+    {
+        Services.AddSingleton<ISharedStateStore, SharedStateStore>();
+        return this;
+    }
 }

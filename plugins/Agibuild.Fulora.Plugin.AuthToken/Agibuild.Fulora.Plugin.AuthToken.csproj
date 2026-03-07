@@ -17,5 +17,6 @@
     <ProjectReference Include="..\..\src\Agibuild.Fulora.Core\Agibuild.Fulora.Core.csproj" />
     <ProjectReference Include="..\..\src\Agibuild.Fulora.Bridge.Generator\Agibuild.Fulora.Bridge.Generator.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
+    <None Include="fulora-plugin.json" Pack="true" PackagePath="fulora-plugin.json" />
   </ItemGroup>
 </Project>

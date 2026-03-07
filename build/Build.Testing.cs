@@ -258,6 +258,22 @@ partial class BuildTask
         .Description("Runs all tests (unit + integration).")
         .DependsOn(UnitTests, IntegrationTests);
 
+    AbsolutePath MutationReportDirectory => ArtifactsDirectory / "mutation-report";
+
+    Target MutationTest => _ => _
+        .Description("Runs Stryker.NET mutation testing on non-UI projects.")
+        .DependsOn(Build)
+        .Executes(() =>
+        {
+            MutationReportDirectory.CreateOrCleanDirectory();
+
+            DotNet(
+                $"stryker --config-file {RootDirectory / "stryker-config.json"} --output {MutationReportDirectory}",
+                workingDirectory: UnitTestsProject.Parent);
+
+            Serilog.Log.Information("Mutation report: {Path}", MutationReportDirectory);
+        });
+
     Target E2ETests => _ => _
         .DependsOn(Build)
         .Description("Run E2E integration tests (platform-gated, requires real WebView adapter)")
